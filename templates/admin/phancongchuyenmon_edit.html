@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+.box {
+    background: #fff;
+    border: 1px solid #ccc;
+}
+
+.box-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background: #f0f0f0;
+    align-items: center;
+}
+
+.filter {
+    padding: 15px;
+    display: flex;
+    gap: 30px;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 🔥 BẢNG CỐ ĐỊNH: ĐỀU NHAU TĂM TẮP */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    table-layout: fixed; /* Chia đều các cột môn học */
+}
+
+th {
+    background: #1f5d8a;
+    color: white;
+    padding: 10px;
+    font-size: 13px;
+    border: 1px solid #ccc;
+}
+
+td {
+    padding: 5px;
+    border: 1px solid #ddd;
+    text-align: center;
+    height: 60px; /* Chiều cao cố định cho mọi dòng */
+    vertical-align: middle;
+}
+
+/* Chiều rộng cố định cho STT và Lớp */
+th:nth-child(1), td:nth-child(1) { width: 50px; }
+th:nth-child(2), td:nth-child(2) { width: 80px; }
+
+.btn {
+    background: #2b7bbb;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+}
+
+.grade-title {
+    margin: 15px 15px 5px 15px;
+    color: #1f5d8a;
+    font-size: 16px;
+    font-weight: bold;
+    border-left: 4px solid #1f5d8a;
+    padding-left: 10px;
+}
+
+.cell-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+/* 🔥 HIỂN THỊ ID - TÊN */
+.conflict-text {
+    font-size: 10px;
+    color: #d9534f; /* Màu đỏ đô cho dễ nhìn */
+    margin-top: 3px;
+    display: block;
+    height: 24px; /* Giữ chỗ trống kể cả khi không có chữ */
+    word-break: break-all; /* Xuống dòng nếu tên quá dài */
+    line-height: 1.2;
+}
+</style>
+
+<div class="box">
+    <div class="box-header">
+        <div>📘 Phân công chuyên môn ({{ teacher.full_name }})</div>
+        <button type="submit" form="formPCM" class="btn">Lưu tất cả</button>
+    </div>
+
+    <div class="filter">
+        <div class="filter-group">
+            <label>Khối:</label>
+            <select onchange="location='?semester_id={{ semester_id }}&grade_id='+this.value">
+                <option value="" {% if not selected_grade %}selected{% endif %}>-- Tất cả khối --</option>
+                <option value="1" {% if selected_grade == 1 %}selected{% endif %}>Khối 1</option>
+                <option value="2" {% if selected_grade == 2 %}selected{% endif %}>Khối 2</option>
+                <option value="3" {% if selected_grade == 3 %}selected{% endif %}>Khối 3</option>
+                <option value="4" {% if selected_grade == 4 %}selected{% endif %}>Khối 4</option>
+                <option value="5" {% if selected_grade == 5 %}selected{% endif %}>Khối 5</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Giáo viên:</label>
+            <select onchange="location='/admin/phancongchuyenmon/edit/'+this.value+'?semester_id={{ semester_id }}&grade_id={{ selected_grade or '' }}'">
+                {% for t in teachers %}
+                <option value="{{ t.teacher_id }}"
+                    {% if t.teacher_id == teacher.teacher_id %}selected{% endif %}>
+                    {{ t.full_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <form method="POST" action="?semester_id={{ semester_id }}&grade_id={{ selected_grade or '' }}" id="formPCM">
+        {% for gd in grade_data %}
+            <div class="grade-title">Phân công - {{ gd.grade.grade_name }}</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>STT</th>
+                        <th>Lớp</th>
+                        {% for s in gd.subjects %}
+                            <th>{{ s.subject_name }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in gd.classes %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><strong>{{ c.class_name }}</strong></td>
+                        {% for s in gd.subjects %}
+                        {% set key = c.class_id|string ~ '_' ~ s.subject_id|string %}
+                        <td {% if key in assigned_map and assigned_map[key].teacher_id != teacher.teacher_id %}
+                                style="background:#fff2f2;"
+                            {% endif %}>
+                            <div class="cell-content">
+                                <input type="checkbox"
+                                name="assign_{{ c.class_id }}_{{ s.subject_id }}"
+                                {% if key in assigned_map %}
+                                    {% if assigned_map[key].teacher_id == teacher.teacher_id %}
+                                        checked
+                                    {% else %}
+                                        disabled
+                                    {% endif %}
+                                {% endif %}
+                                >
+                                <!-- 🔥 Thay đổi định dạng hiển thị ở đây -->
+                                <span class="conflict-text">
+                                    {% if key in assigned_map and assigned_map[key].teacher_id != teacher.teacher_id %}
+                                        {{ assigned_map[key].teacher_id }} - {{ assigned_map[key].teacher_name }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endfor %}
+    </form>
+</div>
+{% endblock %}

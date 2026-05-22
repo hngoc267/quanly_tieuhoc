@@ -1,0 +1,714 @@
+{% extends "base.html" %}
+{% block title %}Đánh giá định kỳ năng lực và phẩm chất{% endblock %}
+
+{% block content %}
+{% set nl_chung = ['Tự chủ và tự học', 'Giao tiếp hợp tác', 'Giải quyết vấn đề và sáng tạo'] %}
+{% set nl_dacthu = ['Ngôn ngữ', 'Tính toán', 'Khoa học', 'Thẩm mỹ', 'Thể chất'] %}
+{% set pham_chat = ['Yêu nước', 'Nhân ái', 'Chăm chỉ', 'Trung thực', 'Trách nhiệm'] %}
+<style>
+
+/* =========================
+   RESET
+========================= */
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body{
+    background:#ececec;
+    overflow-x:auto;
+}
+
+/* =========================
+   WRAPPER
+========================= */
+.page-wrapper{
+    padding:8px;
+}
+
+/* =========================
+   KHUNG CHÍNH
+========================= */
+.edu-card{
+    width:100%;
+    background:#fff;
+    border:1px solid #9a9a9a;
+}
+
+
+/* =========================
+   TOOLBAR
+========================= */
+.toolbar{
+    display:flex;
+    margin-top:0;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 14px 10px;
+    background:#f4f4f4;
+    border-bottom:1px solid #d6d6d6;
+}
+
+.toolbar-title{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    color:#005da0;
+    font-size:18px;
+    font-weight:700;
+}
+
+.toolbar-title i{
+    font-size:17px;
+}
+
+.toolbar-actions{
+    display:flex;
+    gap:10px;
+}
+
+/* =========================
+   BUTTON
+========================= */
+.btn-main{
+    border:none;
+    background:#005d99;
+    color:#fff;
+    font-size:15px;
+    font-weight:700;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    text-decoration: none;
+}
+
+.btn-main:hover{
+    background:#004d80;
+}
+
+/* =========================
+   FILTER BAR - Dàn hàng ngang, không nhảy dòng
+========================= */
+.filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: nowrap;    /* Tuyệt đối không xuống dòng */
+    padding: 12px 14px;
+    background: #f6f6f6;
+    border-bottom: 1px solid #d9d9d9;
+    overflow-x: auto;     /* Hiện thanh cuộn nếu màn hình quá nhỏ */
+}
+
+.filter-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;       /* Không cho phép bị bóp nhỏ */
+}
+
+.filter-item label{
+    font-size:16px;
+    font-weight:700;
+    color:#111;
+}
+
+/* =========================
+   CUSTOM SELECT - Chỉnh lại độ rộng theo đúng thứ tự ảnh
+========================= */
+.custom-select {
+    position: relative;
+    display: block;
+    height: 46px;
+    border: 1px solid #bdbdbd;
+    background: #fff;
+}
+
+/* Ô số 1: KHỐI -> Cho nhỏ lại */
+.filter-item:nth-child(1) .custom-select {
+    width: 130px;
+}
+
+/* Ô số 2: LỚP -> Cho nhỏ lại */
+.filter-item:nth-child(2) .custom-select {
+    width: 130px;
+}
+
+/* Ô số 3: HỌC KỲ -> CHO BỰ RA (Hiện đủ 2025-2026) */
+.filter-item:nth-child(3) .custom-select {
+    width: 220px;
+}
+
+/* Ô số 4: THỜI ĐIỂM -> CHO BỰ RA (Hiện đủ Cuối học kỳ) */
+.filter-item:nth-child(4) .custom-select {
+    width: 200px;
+}
+
+/* Ô số 5: LOẠI ĐÁNH GIÁ -> Vừa phải */
+.filter-item:nth-child(5) .custom-select {
+    width: 180px;
+}
+
+.custom-select select {
+    width: 100%;
+    height: 100%;
+    border: none;
+    outline: none;
+    padding: 0 42px 0 12px;
+    font-size: 15px;
+    color: #333;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+}
+
+.select-icon {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 40px;
+    height: 100%;
+    border-left: 1px solid #c7c7c7;
+    background: #f4f4f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #555;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* =========================
+   TABLE
+========================= */
+.table-wrapper{
+    width:100%;
+    overflow-x:auto;
+}
+
+.edu-table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:1700px;
+}
+
+/* =========================
+   HEADER TABLE
+========================= */
+.edu-table th{
+    background:#005f99;
+    color:#fff;
+    border:1px solid #b8d0df;
+    text-align:center;
+    vertical-align:middle;
+    font-weight:700;
+}
+
+/* HÀNG HEADER TO */
+.head-big{
+    font-size:16px;
+    padding:12px 5px;
+}
+
+/* HÀNG HEADER GIỮA */
+.head-mid{
+    font-size:13px;
+    padding:10px 5px;
+}
+
+/* HÀNG HEADER NHỎ */
+.head-small{
+    position:relative;
+    font-size:11px;
+    line-height:1.45;
+    padding:14px 3px 18px;
+    min-width:54px;
+}
+
+/* ICON DROPDOWN */
+.dropdown-arrow{
+    position:absolute;
+    bottom:6px;
+    left:50%;
+    transform:translateX(-50%);
+    font-size:10px;
+    color:#fff;
+}
+
+/* =========================
+   BODY TABLE
+========================= */
+.edu-table td{
+    border:1px solid #dddddd;
+    height:52px;
+    background:#f2f2f2;
+    font-size:15px;
+    color:#111;
+}
+
+.edu-table tbody tr:nth-child(even) td{
+    background:#ebebeb;
+}
+
+/* =========================
+   WIDTH CỘT
+========================= */
+.fixed-col{
+    min-width:65px;
+}
+
+.name-col{
+    min-width:165px;
+}
+
+.date-col{
+    min-width:120px;
+}
+
+.comment-col{
+    min-width:130px;
+}
+
+.comment-content{
+    min-width:160px;
+}
+
+/* =========================
+   INPUT TABLE
+========================= */
+.edu-table select{
+    width:100%;
+    height:100%;
+    border:none;
+    background:transparent;
+    outline:none;
+    font-size:15px;
+    padding-left:8px;
+}
+
+.edu-table textarea {
+    width: 100%;
+    min-height: 48px;
+    border: none;
+    resize: none; /* Khóa kéo giãn bằng tay giống bên màn hình điểm số */
+    background: transparent;
+    outline: none;
+    padding: 8px;
+    font-size: 14px;
+    text-align: left; /* 🔥 Đổi từ center thành left để chữ căn lề trái thẳng hàng */
+    line-height: 1.4;
+}
+
+/* Thêm đoạn này ngay phía dưới để chữ đẩy lên sát mép trên ô td cho đẹp */
+.edu-table td:has(textarea) {
+    padding: 0 !important;
+    vertical-align: top;
+}
+
+.edu-table input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 6px;
+    text-align: center; /* Thêm dòng này để căn giữa mã nhận xét */
+}
+
+.center{
+    text-align:center;
+}
+
+.name-cell{
+    padding-left:10px;
+}
+
+</style>
+
+<div class="page-wrapper">
+
+    <div class="edu-card">
+
+        <!-- TOOLBAR -->
+        <div class="toolbar">
+
+            <div class="toolbar-title">
+    <i class="fas fa-edit"></i> <span style="font-size:18px;">
+        Đánh giá định kỳ năng lực và phẩm chất
+    </span>
+</div>
+
+            <div class="toolbar-actions">
+    <button type="button" id="btnSaveEval" class="btn-main">
+        Cập nhật
+    </button>
+
+    <button type="button" id="btnImportEval" class="btn-main">
+        Nhập ĐGĐK NLPC từ Excel
+    </button>
+
+    <a href="{{ url_for('export_evaluation', class_id=selected_class, semester_id=selected_semester_id, time=selected_time, type=selected_type) }}"
+   id="btnExportEval" class="btn-main">
+    Xuất Excel
+</a>
+</div>
+
+        </div>
+
+        <!-- FILTER -->
+        {# Hiển thị thông báo khi lưu thành công hoặc có lỗi #}
+{% if request.args.get('msg') %}
+{% set msg = request.args.get('msg') %}
+{% set is_error = "Từ chối" in msg or "Lỗi" in msg %}
+<div id="status-alert" style="padding: 12px; margin: 10px 14px; border-radius: 4px; font-weight: bold;
+    background: {{ '#f8d7da' if is_error else '#d4edda' }};
+    color: {{ '#721c24' if is_error else '#155724' }};
+    border: 1px solid {{ '#f5c6cb' if is_error else '#c3e6cb' }};">
+    <i class="fas {{ 'fa-exclamation-circle' if is_error else 'fa-check-circle' }}"></i> {{ msg }}
+</div>
+<script>
+    // Tự động ẩn thông báo sau 6 giây
+    setTimeout(() => {
+        const alert = document.getElementById('status-alert');
+        if(alert) alert.style.display = 'none';
+    }, 6000);
+</script>
+{% endif %}
+
+        <form method="GET">
+    <div class="filter-bar">
+        <div class="filter-item">
+            <label>Khối:</label>
+            <div class="custom-select">
+                <select name="grade" onchange="handleFilterChange(this)">
+                    <option value="">Chọn khối</option>
+                    {% for id, name in filter_grades.items() %}
+                        <option value="{{ id }}" {% if selected_grade == id|string %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="select-icon">▼</div>
+            </div>
+        </div>
+
+        <div class="filter-item">
+            <label>Lớp:</label>
+            <div class="custom-select">
+                <select name="class_id" onchange="handleFilterChange(this)">
+                    <option value="">Chọn lớp</option>
+                    {% for c in assigned_classes %}
+                        {% if not selected_grade or c.classes.grade_id|string == selected_grade %}
+                            <option value="{{ c.class_id }}" {% if selected_class == c.class_id|string %}selected{% endif %}>{{ c.classes.class_name }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+                <div class="select-icon">▼</div>
+            </div>
+        </div>
+
+        <div class="filter-item">
+    <label>Học kỳ:</label>
+    <div class="custom-select">
+        <select name="semester_id" onchange="handleSemesterChange(this)">
+            {% for s in semesters %}
+                <option value="{{ s.semester_id }}" {% if selected_semester_id == s.semester_id|string %}selected{% endif %}>{{ s.semester_name }}</option>
+            {% endfor %}
+        </select>
+        <div class="select-icon">▼</div>
+    </div>
+</div>
+
+        <div class="filter-item">
+            <label>Thời điểm:</label>
+            <div class="custom-select">
+                <select name="time" onchange="this.form.submit()">
+                    {% for t in eval_times %}
+                        <option value="{{ t }}" {% if selected_time == t %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+                <div class="select-icon">▼</div>
+            </div>
+        </div>
+
+        <div class="filter-item">
+            <label>Loại đánh giá:</label>
+            <div class="custom-select">
+                <select name="type" onchange="this.form.submit()">
+                    <option value="">Chọn</option>
+                    {% for rule in eval_rules %}
+                        <option value="{{ rule }}" {% if selected_type == rule %}selected{% endif %}>{{ rule }}</option>
+                    {% endfor %}
+                </select>
+                <div class="select-icon">▼</div>
+            </div>
+        </div>
+    </div>
+</form>
+
+        <!-- TABLE -->
+        <form id="formEvaluation" method="POST" action="{{ url_for('save_evaluation') }}">
+            <input type="hidden" name="class_id" value="{{ selected_class }}">
+            <input type="hidden" name="semester_id_hidden" value="{{ selected_semester_id }}">
+            <input type="hidden" name="grade_hidden" value="{{ selected_grade }}">
+            <input type="hidden" name="evaluation_time_hidden" value="{{ selected_time }}">
+
+            <input type="hidden" name="evaluation_type_hidden" value="{{ selected_type }}">
+
+        <div class="table-wrapper">
+                <table class="edu-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="3" class="head-big fixed-col">STT</th>
+                            <th rowspan="3" class="head-big name-col">Họ tên</th>
+                            <th rowspan="3" class="head-big date-col">Mã định danh Bộ GD&ĐT</th>
+                            <th rowspan="3" class="head-big date-col">Ngày sinh</th>
+                            <th colspan="8" class="head-big">Năng lực cốt lõi</th>
+                            <th colspan="5" class="head-big">Phẩm chất chủ yếu</th>
+                            <th colspan="2" class="head-big">Nhận xét năng lực chung</th>
+                            <th colspan="2" class="head-big">Nhận xét năng lực đặc thù</th>
+                        </tr>
+                        <tr>
+                            <th colspan="3" class="head-mid">Năng lực chung</th>
+                            <th colspan="5" class="head-mid">Năng lực đặc thù</th>
+                            <th rowspan="2" class="head-small">Yêu nước <div class="dropdown-arrow">▼</div></th>
+                            <th rowspan="2" class="head-small">Nhân ái <div class="dropdown-arrow">▼</div></th>
+                            <th rowspan="2" class="head-small">Chăm chỉ <div class="dropdown-arrow">▼</div></th>
+                            <th rowspan="2" class="head-small">Trung thực <div class="dropdown-arrow">▼</div></th>
+                            <th rowspan="2" class="head-small">Trách nhiệm <div class="dropdown-arrow">▼</div></th>
+                            <th rowspan="2" class="head-small comment-col">Mã nhận xét</th>
+                            <th rowspan="2" class="head-small comment-content">Nội dung</th>
+                            <th rowspan="2" class="head-small comment-col">Mã nhận xét</th>
+                            <th rowspan="2" class="head-small comment-content">Nội dung</th>
+                        </tr>
+                        <tr>
+                            <th class="head-small">Tự chủ và tự học <div class="dropdown-arrow">▼</div></th>
+                            <th class="head-small">Giao tiếp và hợp tác <div class="dropdown-arrow">▼</div></th>
+                            <th class="head-small">Giải quyết vấn đề và sáng tạo <div class="dropdown-arrow">▼</div></th>
+                            <th class="head-small">Ngôn ngữ <div class="dropdown-arrow">▼</div></th>
+                            <th class="head-small">Tính toán <div class="dropdown-arrow">▼</div></th>
+                            <th class="head-small">Khoa học <div class="dropdown-arrow">▼</div></th>
+                            <th class="head-small">Thẩm mỹ <div class="dropdown-arrow">▼</div></th>
+                            <th class="head-small">Thể chất <div class="dropdown-arrow">▼</div></th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {# 1. VÒNG LẶP CHÍNH: HỌC SINH #}
+                        {% for s in students %}
+                        {% set sid = s.student_id %}
+                        <tr>
+                            <td class="center">{{ loop.index }}</td>
+                            <td class="name-cell">{{ s.ho_ten }}</td>
+                            <td class="center">{{ s.ma_dinh_danh }}</td>
+                            <td class="center">{{ s.ngay_sinh if s.ngay_sinh else '' }}</td>
+
+                            {# 2. VÒNG LẶP NĂNG LỰC CHUNG (3 cột) #}
+                            {% for crit in nl_chung %}
+                            <td>
+                                <select name="eval_{{ sid }}_{{ crit }}">
+                                    <option value=""></option>
+                                    {# 3. Vòng lặp Options #}
+                                    {% for v in ['Tốt', 'Đạt', 'Cần cố gắng'] %}
+                                    <option value="{{ v }}" {% if eval_map.get(sid, {}).get(crit) == v %}selected{% endif %}>{{ v }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            {% endfor %}
+
+                            {# 4. VÒNG LẶP NĂNG LỰC ĐẶC THÙ (7 cột) #}
+                            {% for crit in nl_dacthu %}
+                            <td>
+                                <select name="eval_{{ sid }}_{{ crit }}">
+                                    <option value=""></option>
+                                    {# 5. Vòng lặp Options #}
+                                    {% for v in ['Tốt', 'Đạt', 'Cần cố gắng'] %}
+                                    <option value="{{ v }}" {% if eval_map.get(sid, {}).get(crit) == v %}selected{% endif %}>{{ v }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            {% endfor %}
+
+                            {# 6. VÒNG LẶP PHẨM CHẤT (5 cột) #}
+                            {% for crit in pham_chat %}
+                            <td>
+                                <select name="eval_{{ sid }}_{{ crit }}">
+                                    <option value=""></option>
+                                    {# 7. Vòng lặp Options #}
+                                    {% for v in ['Tốt', 'Đạt', 'Cần cố gắng'] %}
+                                    <option value="{{ v }}" {% if eval_map.get(sid, {}).get(crit) == v %}selected{% endif %}>{{ v }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            {% endfor %}
+
+                            {# Cột Mã nhận xét chung #}
+<td>
+    <input type="text" name="code_chung_{{ sid }}"
+           value="{{ eval_map.get(sid, {}).get('chung_code', '') }}">
+</td>
+
+{# Cột Nội dung nhận xét chung #}
+<td>
+    <textarea name="comment_chung_{{ sid }}">{{ eval_map.get(sid, {}).get('chung_text', '') }}</textarea>
+</td>
+
+{# Cột Mã nhận xét đặc thù #}
+<td>
+    <input type="text" name="code_dacthu_{{ sid }}"
+           value="{{ eval_map.get(sid, {}).get('dacthu_code', '') }}">
+</td>
+
+{# Cột Nội dung nhận xét đặc thù #}
+<td>
+    <textarea name="comment_dacthu_{{ sid }}">{{ eval_map.get(sid, {}).get('dacthu_text', '') }}</textarea>
+</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="importModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+
+    <div style="background:#fff; width:450px; padding:25px; border-radius:12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); position: relative;">
+
+        <h3 style="margin-bottom:15px; color:#005da0; display:flex; align-items:center; gap:10px;">
+            <i class="fas fa-file-import"></i> Nhập dữ liệu từ Excel
+        </h3>
+
+        <form action="{{ url_for('import_evaluation') }}" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="semester_id" value="{{ selected_semester_id }}">
+            <input type="hidden" name="time" value="{{ selected_time }}">
+            <input type="hidden" name="type" value="{{ selected_type }}">
+            <input type="hidden" name="class_id" value="{{ selected_class }}">
+            <input type="hidden" name="grade" value="{{ selected_grade }}">
+
+            <div style="background:#f9f9f9; padding:20px; border:2px dashed #cbd5e0; border-radius:8px; text-align:center; margin-bottom:20px;">
+                <input type="file" name="file" accept=".xlsx, .xls" required style="font-size:14px; cursor: pointer;">
+                <p style="font-size:12px; color:#666; margin-top:10px;">
+                    * Lưu ý: Sử dụng file được xuất từ hệ thống để đảm bảo đúng định dạng cột.
+                </p>
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" onclick="document.getElementById('importModal').style.display='none'"
+                        style="padding:10px 20px; border-radius:8px; border:1px solid #ccc; background:#fff; cursor:pointer; font-weight: bold;">Hủy</button>
+                <button type="submit" class="btn-main">Bắt đầu nhập dữ liệu</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="warningModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div style="background:#fff; width:400px; padding:25px; border-radius:12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align:center;">
+        <h3 style="margin-bottom:15px; color:#e53e3e; display:flex; align-items:center; justify-content:center; gap:10px;">
+            <i class="fas fa-exclamation-triangle"></i> Thông báo
+        </h3>
+        <p id="warningMessage" style="font-size:15px; color:#333; line-height:1.6; margin-bottom:20px;">
+            Vui lòng chọn đầy đủ các bộ lọc trên thanh công cụ!
+        </p>
+        <button type="button" onclick="document.getElementById('warningModal').style.display='none'"
+                style="padding:10px 30px; border-radius:8px; border:none; background:#005d99; color:#fff; cursor:pointer; font-weight:bold;">Đóng</button>
+    </div>
+</div>
+<script>
+function handleSemesterChange(semesterSelect) {
+    const form = semesterSelect.form;
+
+    // Khi chọn học kỳ xong -> Chủ động xóa trắng Khối và Lớp cũ
+    // Việc này ép chuỗi phân cấp tính lại từ đầu (Khối nhảy theo, lớp nhảy theo)
+    const gradeSelect = form.querySelector('select[name="grade"]');
+    const classSelect = form.querySelector('select[name="class_id"]');
+
+    if (gradeSelect) gradeSelect.value = "";
+    if (classSelect) classSelect.value = "";
+
+    // Tiến hành gửi form đi
+    form.submit();
+}
+
+function handleFilterChange(currentSelect) {
+    const form = currentSelect.form;
+    const name = currentSelect.name;
+
+    // Nếu thay đổi "Khối" -> Reset Lớp và các mục phía sau
+    if (name === 'grade') {
+        const classSelect = form.querySelector('select[name="class_id"]');
+        if (classSelect) classSelect.value = "";
+
+        // Riêng bên Nhập điểm cần reset thêm Môn học
+        const subjectSelect = form.querySelector('select[name="subject_id"]');
+        if (subjectSelect) subjectSelect.value = "";
+    }
+
+    // Nếu thay đổi "Lớp" ở trang Nhập điểm -> Reset Môn học cho chắc chắn
+    if (name === 'class_id') {
+        const subjectSelect = form.querySelector('select[name="subject_id"]');
+        if (subjectSelect) subjectSelect.value = "";
+    }
+
+    form.submit();
+}
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Kiểm tra xem bảng có dữ liệu học sinh hay không
+        const hasData = document.querySelectorAll('.edu-table tbody tr').length > 0;
+        const warningModal = document.getElementById('warningModal');
+        const warningMsg = document.getElementById('warningMessage');
+
+        // 1. Xử lý nút CẬP NHẬT
+        const saveBtn = document.getElementById('btnSaveEval');
+        if (saveBtn) {
+            saveBtn.onclick = function() {
+                if (!hasData) {
+                    warningMsg.innerText = "Không có dữ liệu học sinh để cập nhật! Vui lòng chọn bộ lọc để tải danh sách.";
+                    warningModal.style.display = 'flex';
+                } else {
+                    document.getElementById('formEvaluation').submit();
+                }
+            };
+        }
+
+        // 2. Xử lý nút XUẤT EXCEL
+        const exportBtn = document.getElementById('btnExportEval');
+        if (exportBtn) {
+            exportBtn.onclick = function(e) {
+                if (!hasData) {
+                    e.preventDefault(); // Chặn không cho tải file
+                    warningMsg.innerText = "Không có dữ liệu để xuất file Excel! Vui lòng chọn bộ lọc để hiển thị danh sách trước.";
+                    warningModal.style.display = 'flex';
+                }
+            };
+        }
+
+        // 3. Xử lý nút NHẬP EXCEL (Logic cũ của bạn)
+        const importBtn = document.getElementById('btnImportEval');
+        if (importBtn) {
+            importBtn.onclick = function() {
+                const g = document.querySelector('select[name="grade"]').value;
+                const c = document.querySelector('select[name="class_id"]').value;
+                const s = document.querySelector('select[name="semester_id"]').value;
+                const t = document.querySelector('select[name="time"]').value;
+                const type = document.querySelector('select[name="type"]').value;
+
+                if (!g || !c || !s || !t || !type) {
+                    warningMsg.innerText = "Vui lòng chọn đầy đủ Khối, Lớp, Học kỳ, Thời điểm và Loại đánh giá trước khi nạp dữ liệu!";
+                    warningModal.style.display = 'flex';
+                    return;
+                }
+                document.getElementById('importModal').style.display = 'flex';
+            };
+        }
+    });
+</script>
+{% endblock %}

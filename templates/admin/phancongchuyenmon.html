@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+.box {
+    background: #fff;
+    border: 1px solid #ccc;
+}
+
+/* HEADER */
+.box-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: #f0f0f0;
+    border-bottom: 1px solid #ddd;
+    font-weight: bold;
+}
+
+/* BUTTON */
+.btn {
+    display: inline-block;
+    background: #1f78b4;
+    color: white !important;
+    padding: 6px 12px;
+    margin-left: 5px;
+    border-radius: 6px;
+    text-decoration: none !important;
+    font-size: 13px;
+    border: none;
+}
+
+.btn:hover {
+    background: #16659c;
+}
+
+/* FILTER */
+.filter {
+    padding: 10px;
+}
+
+/* TABLE */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    background: #1f5d8a;
+    color: white;
+    padding: 10px;
+    border: 1px solid #ccc;
+}
+
+td {
+    padding: 8px;
+    border: 1px solid #ddd;
+}
+
+/* 🔥 CHIA CỘT CHUẨN */
+th:nth-child(1), td:nth-child(1) {
+    width: 60px;
+    text-align: center;
+}
+
+th:nth-child(2), td:nth-child(2) {
+    width: 80px;
+    text-align: center;
+}
+
+th:nth-child(3), td:nth-child(3) {
+    width: 120px;
+    text-align: center;
+}
+
+th:nth-child(4), td:nth-child(4) {
+    width: 180px;
+}
+
+th:nth-child(5), td:nth-child(5) {
+    width: auto; /* chiếm hết phần còn lại */
+    white-space: normal; /* cho xuống dòng đẹp nếu dài */
+}
+
+/* ROW */
+tr:nth-child(even) {
+    background: #f9f9f9;
+}
+
+/* 🔥 ICON CẬP NHẬT: Màu xanh chuẩn từ quản lý học sinh */
+.edit-icon {
+    text-decoration: none;
+    font-size: 16px;
+    color: #1565C0; /* Màu xanh chuẩn */
+    font-weight: bold;
+}
+
+.edit-icon:hover {
+    color: #0d47a1;
+}
+</style>
+
+<div class="box">
+
+    <!-- HEADER + BUTTON -->
+    <div class="box-header">
+        <div>
+            📘 Phân công chuyên môn
+        </div>
+
+        <div>
+            <a href="{{ url_for('import_pcm_page') }}" class="btn">
+                Nhập PCCM từ Excel
+            </a>
+            <a href="{{ url_for('pcm_by_class') }}" class="btn">
+                Xem PCCM theo lớp
+            </a>
+            <a href="{{ url_for('export_pcm', semester_id=selected_semester) }}" class="btn">
+                Xuất Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- FILTER HỌC KỲ -->
+    <div class="filter">
+        <label>Học kỳ:</label>
+        <select onchange="location='?semester_id='+this.value">
+            {% for s in semesters %}
+                <option value="{{ s.semester_id }}"
+                    {% if selected_semester == s.semester_id %}selected{% endif %}>
+                    {{ s.semester_name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- TABLE -->
+    <table>
+        <thead>
+            <tr>
+                <th>STT</th>
+                <th>Phân công</th>
+                <th>Mã định danh</th>
+                <th>Giáo viên</th>
+                <th>Môn dạy</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for t in teachers %}
+            <tr>
+                <td>{{ loop.index }}</td>
+
+                <td style="text-align:center;">
+                    <!-- 🔥 Sử dụng icon ✎ đồng bộ với trang quản lý học sinh -->
+                    <a class="edit-icon"
+                       href="{{ url_for('edit_pcm', teacher_id=t.teacher_id, semester_id=selected_semester) }}">
+                        ✎
+                    </a>
+                </td>
+
+                <td>{{ t.teacher_id }}</td>
+                <td>{{ t.full_name }}</td>
+
+                <!-- MÔN DẠY NGANG -->
+                <td>
+                    {{ teacher_map.get(t.teacher_id, []) | join(', ') }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+{% endblock %}

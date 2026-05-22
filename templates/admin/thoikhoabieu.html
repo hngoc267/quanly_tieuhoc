@@ -1,0 +1,912 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+
+:root {
+  --primary: #2c3e8c;
+  --header-bg: #2c3e8c;
+  --border: #dde1e7;
+  --text: #2c3e50;
+  --text-muted: #7f8c8d;
+  --success: #2c3e8c;
+  --danger: #2c3e8c;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.page-wrapper { padding: 16px; }
+
+/* TOOLBAR */
+.toolbar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.toolbar-left { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--primary); font-weight: 700; }
+.toolbar-right { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* BUTTONS */
+.btn {
+  padding: 6px 13px; border: none; border-radius: 4px; cursor: pointer;
+  font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;
+  text-decoration: none; transition: opacity 0.15s;
+}
+.btn:hover { opacity: 0.85; }
+.btn-primary   { background: var(--primary); color: #fff; }
+.btn-success   { background: var(--success);  color: #fff; }
+.btn-danger    { background: var(--danger);   color: #fff; }
+.btn-info      { background: #2c3e8c; color: #fff; }
+.btn-secondary { background: #2c3e8c; color: #fff; }
+.btn-outline   { background: #2c3e8c; color: #fff; }
+
+/* FILTER BAR */
+.filter-bar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  background: #fff; border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 16px; margin-bottom: 12px; box-shadow: var(--shadow);
+}
+.filter-bar label { font-size: 13px; font-weight: 600; }
+.filter-bar select {
+  padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px;
+  font-size: 13px; cursor: pointer;
+}
+
+/* TABLE */
+.table-wrapper {
+  background: #fff; border: 1px solid var(--border);
+  border-radius: 6px; overflow: hidden; box-shadow: var(--shadow);
+}
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table thead tr { background: var(--header-bg); color: #fff; }
+.data-table th { padding: 9px 12px; text-align: left; white-space: nowrap; font-weight: 600; }
+.data-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.data-table tr:hover td { background: #fef8f8; }
+
+/* CLASS NAME */
+.class-name { font-weight: 700; color: var(--primary); white-space: nowrap; }
+
+/* WEEK TAGS */
+.tuan-wrap { display: flex; flex-wrap: wrap; gap: 5px; }
+.tuan-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px;
+  padding: 3px 8px; font-size: 12px; cursor: pointer;
+  text-decoration: none; color: var(--text); transition: all 0.15s;
+  white-space: nowrap;
+}
+.tuan-tag:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.no-data { color: #aaa; font-style: italic; font-size: 12px; }
+
+/* PAGINATION */
+.pagination-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-top: 1px solid var(--border); font-size: 13px;
+}
+.pagination { display: flex; gap: 3px; }
+.pg-btn {
+  width: 28px; height: 28px; border: 1px solid var(--border); background: #fff;
+  border-radius: 4px; cursor: pointer; font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+}
+.pg-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.pg-btn:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+
+/* ALERT */
+.alert { padding: 10px 14px; border-radius: 5px; margin-bottom: 12px; font-size: 13px; }
+.alert-success { background: #d5f5e3; color: #145a32; border: 1px solid #a9dfbf; }
+.alert-danger  { background: #fde8e8; color: #c0392b; border: 1px solid #f5b7b1; }
+
+/* ============ MODAL TKB ============ */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55); z-index: 99999;
+  align-items: flex-start; justify-content: center;
+  padding-top: 20px; overflow-y: auto;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+  background: #fff; border-radius: 8px; width: 96vw; max-width: 1060px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.22);
+  animation: mIn 0.2s ease; margin-bottom: 24px;
+}
+@keyframes mIn { from{transform:translateY(-16px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+.modal-header {
+  background: var(--header-bg); color: #fff; padding: 13px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-weight: 700; font-size: 15px; border-radius: 8px 8px 0 0;
+}
+.btn-close-modal { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; }
+
+.modal-toolbar {
+  background: #f5f6fa; padding: 10px 16px; border-bottom: 1px solid var(--border);
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.modal-filters {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  display: flex; gap: 14px; align-items: center; flex-wrap: wrap; background: #fff;
+}
+.modal-filters label { font-size: 13px; font-weight: 600; }
+.modal-filters select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; }
+
+/* TKB GRID */
+.tkb-wrap { overflow-x: auto; padding: 14px 16px; }
+.tkb-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 700px; }
+.tkb-table th {
+  background: var(--header-bg); color: #fff; padding: 8px 6px;
+  text-align: center; border: 1px solid #3a5ba0; white-space: nowrap;
+}
+.tkb-table td { border: 1px solid #dde; padding: 3px; }
+.tkb-table .cell-label {
+  background: #f0f2f5; text-align: center; font-size: 11px;
+  font-weight: 600; color: #666; padding: 5px 3px; white-space: nowrap;
+}
+.tkb-select {
+  width: 100%; padding: 3px 5px; border: 1px solid #dde; border-radius: 3px;
+  font-size: 11px; background: #fff; cursor: pointer;
+}
+.tkb-select:focus { outline: none; border-color: var(--primary); }
+
+.modal-footer {
+  padding: 11px 16px; border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 8px; background: #f8f9fa;
+  border-radius: 0 0 8px 8px;
+}
+</style>
+
+<div class="page-wrapper">
+
+  {% if msg %}
+  <div class="alert alert-success">✅ {{ msg }}</div>
+  {% endif %}
+  {% if error_msg %}
+  <div class="alert alert-danger">❌ {{ error_msg }}</div>
+  {% endif %}
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <div class="toolbar-left">📋 Quản lý thời khóa biểu</div>
+    <div class="toolbar-right">
+      <button class="btn btn-primary" onclick="openModal()"> Thêm mới TKB</button>
+      <button class="btn btn-success" onclick="exportExcel()"> Xuất Excel</button>
+      <button class="btn btn-danger" onclick="alert('Chọn TKB từ bảng để xóa!')"> Xóa TKB</button>
+      <button class="btn btn-outline"   onclick="xemTKB()"> Xem</button>
+      <button class="btn btn-secondary" onclick="nhapTuExcel()"> Nhập từ Excel</button>
+    </div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <label>Loại:</label>
+    <select id="f_loai">
+      <option>Lớp thường</option>
+    </select>
+
+    <label>Khối:</label>
+    <select id="f_khoi" onchange="applyFilter()">
+      {% for g in grades %}
+      <option value="{{ g.grade_id }}" {% if selected_grade == g.grade_id %}selected{% endif %}>
+        {{ g.grade_number }}
+      </option>
+      {% endfor %}
+    </select>
+
+    <label>Lớp:</label>
+    <select id="f_lop" onchange="applyFilter()">
+      <option value="">--Tất cả--</option>
+      {% for c in classes %}
+      <option value="{{ c.class_id }}" {% if selected_class == c.class_id %}selected{% endif %}>
+        {{ c.class_name }}
+      </option>
+      {% endfor %}
+    </select>
+
+    <label>Học kỳ:</label>
+    <select id="f_semester" onchange="applyFilter()">
+      {% for s in semesters %}
+      <option value="{{ s.semester_id }}" {% if selected_semester == s.semester_id %}selected{% endif %}>
+        {{ s.display_name if s.display_name else s.semester_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- BẢNG -->
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th width="45">STT</th>
+          <th>Tên lớp</th>
+          <th>Tuần học đã có thời khóa biểu</th>
+          <th>Tuần học chưa có thời khóa biểu</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in class_weeks %}
+        <tr>
+          <td style="text-align:center">{{ loop.index }}</td>
+          <td class="class-name">{{ row.class_name }}</td>
+          <td>
+            <div class="tuan-wrap">
+              {% for w in row.has_tkb %}
+              <a class="tuan-tag" href="#"
+                 onclick="openEditTKB({{ row.class_id }}, {{ w.week_id }}, '{{ w.week_label }}'); return false;">
+                ✏️ {{ w.week_label }}
+              </a>
+              {% endfor %}
+            </div>
+          </td>
+          <td>
+            <div class="tuan-wrap">
+              {% for w in row.no_tkb %}
+              <a class="tuan-tag" href="#"
+                 onclick="openNewTKB({{ row.class_id }}, {{ w.week_id }}, '{{ w.week_label }}'); return false;">
+                {{ w.week_label }}
+              </a>
+              {% endfor %}
+              {% if not row.has_tkb and not row.no_tkb %}
+              <span class="no-data">Chưa có tuần nào</span>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" style="text-align:center;color:#aaa;padding:24px">Chưa có dữ liệu</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- PAGINATION -->
+    <div class="pagination-bar">
+      <div class="pagination">
+        <button class="pg-btn" onclick="goPage(1)">⟨⟨</button>
+        <button class="pg-btn" onclick="goPage(currentPage-1)">⟨</button>
+        {% for p in range(1, total_pages+1) %}
+        <button class="pg-btn {% if p == current_page %}active{% endif %}" onclick="goPage({{ p }})">{{ p }}</button>
+        {% endfor %}
+        <button class="pg-btn" onclick="goPage(currentPage+1)">⟩</button>
+        <button class="pg-btn" onclick="goPage({{ total_pages }})">⟩⟩</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:13px;">
+        Số bản ghi/trang:
+        <select style="padding:3px 6px;border:1px solid #ddd;border-radius:4px;">
+          <option>100</option><option>50</option><option>20</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========== MODAL KHAI BÁO TKB =========== -->
+<div class="modal-overlay" id="tkbModal">
+  <div class="modal-box">
+
+    <div class="modal-header">
+      <span id="modal-title">📋 Khai báo thời khóa biểu</span>
+      <button class="btn-close-modal" onclick="closeModal()">✕</button>
+    </div>
+
+    <!-- TOOLBAR TRONG MODAL -->
+    <div class="modal-toolbar">
+      <button class="btn btn-primary"   onclick="saveTKB()">💾 Cập nhật</button>
+      <button class="btn btn-info"      onclick="saoCHepTKB()">📋 Sao chép</button>
+      <button class="btn btn-danger"    onclick="deleteTKB()">🗑️ Xóa</button>
+      <button class="btn btn-secondary" onclick="layDuLieuHK1()">🔄 Lấy dữ liệu từ HK1</button>
+      <button class="btn btn-outline"   onclick="xemTKB()">👁️ Xem</button>
+      <button class="btn btn-secondary" onclick="nhapTuExcel()">📤 Nhập từ Excel</button>
+      <button class="btn btn-success"   onclick="exportExcel()">📥 Xuất Excel</button>
+    </div>
+
+
+    <!-- FILTERS TRONG MODAL -->
+    <div class="modal-filters">
+      <label>Loại:</label>
+      <select id="m_loai"><option>Lớp thường</option></select>
+
+      <label>Khối:</label>
+      <select id="m_khoi" onchange="loadModalClasses()">
+        {% for g in grades %}
+        <option value="{{ g.grade_id }}">{{ g.grade_number }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Lớp:</label>
+      <select id="m_lop" onchange="loadTKBGrid()">
+        <option value="">-- Chọn lớp --</option>
+      </select>
+
+      <label>Tuần:</label>
+      <select id="m_tuan" onchange="loadTKBGrid()">
+        <option value="">-- Chọn tuần --</option>
+        {% for w in all_weeks %}
+        <option value="{{ w.week_id }}">{{ w.week_label }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Học kỳ:</label>
+      <select id="m_semester" onchange="loadTKBGrid()">
+        {% for s in semesters %}
+        <option value="{{ s.semester_id }}" {% if selected_semester == s.semester_id %}selected{% endif %}>
+          {{ s.display_name if s.display_name else s.semester_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- LƯỚI TKB -->
+    <div class="tkb-wrap">
+      <table class="tkb-table" id="tkb-grid">
+        <thead>
+          <tr>
+            <th style="width:40px">STT</th>
+            <th style="width:50px">Buổi</th>
+            <th style="width:45px">Tiết</th>
+            <th>Thứ 2</th>
+            <th>Thứ 3</th>
+            <th>Thứ 4</th>
+            <th>Thứ 5</th>
+            <th>Thứ 6</th>
+          </tr>
+        </thead>
+        <tbody id="tkb-body">
+          <tr><td colspan="8" style="text-align:center;padding:20px;color:#aaa">Chọn lớp và tuần để xem TKB</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Đóng</button>
+      <button class="btn btn-primary"   onclick="saveTKB()">💾 Lưu TKB</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL SAO CHÉP TKB ===== -->
+<div class="modal-overlay" id="modalCopyTKB" style="z-index:999999">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-header">
+      📋 Sao chép TKB từ tuần khác
+      <button class="btn-close-modal" onclick="closeCopyModal()">✕</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+      <input type="hidden" id="copy_dest_class_id">
+      <input type="hidden" id="copy_dest_week_id">
+      <input type="hidden" id="copy_semester_id">
+
+      <div style="font-size:13px;color:#555">
+        Chọn tuần nguồn để sao chép dữ liệu vào tuần đang mở.<br>
+        <strong style="color:#dc2626">⚠️ Dữ liệu tuần đích sẽ bị ghi đè!</strong>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+        <label style="width:100px;font-weight:600">Tuần nguồn:</label>
+        <select id="copy_src_week_id" style="flex:1;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px">
+          <option value="">-- Chọn tuần --</option>
+          {% for w in all_weeks %}
+          <option value="{{ w.week_id }}">{{ w.week_label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+        <button class="btn btn-secondary" onclick="closeCopyModal()">Hủy</button>
+        <button class="btn btn-primary" onclick="submitCopyTKB()">✅ Xác nhận sao chép</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL NHẬP TỪ EXCEL ===== -->
+<div class="modal-overlay" id="modalImportExcel" style="z-index:999999">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header">
+      📤 Nhập TKB từ Excel
+      <button class="btn-close-modal" onclick="closeImportModal()">✕</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px;font-size:13px">
+      <input type="hidden" id="import_class_id">
+      <input type="hidden" id="import_week_id">
+      <input type="hidden" id="import_semester_id">
+
+      <!-- Hướng dẫn -->
+      <div style="background:#f0f4ff;border:1px solid #c7d7f5;border-radius:6px;padding:12px;line-height:1.7">
+        <strong>Định dạng file Excel (.xlsx):</strong><br>
+        Cột A: <code>day_of_week</code> (2-7)<br>
+        Cột B: <code>session</code> (Sáng / Chiều)<br>
+        Cột C: <code>period</code> (1-5)<br>
+        Cột D: <code>subject_name</code> (tên môn đúng hệ thống)<br>
+        Cột E: <code>teacher_name</code> (tên GV đúng hệ thống)
+      </div>
+
+      <a href="/admin/tkb/import-template" class="btn btn-info" style="width:fit-content">
+        ⬇️ Tải file mẫu
+      </a>
+
+      <div>
+        <label style="font-weight:600;display:block;margin-bottom:6px">Chọn file Excel:</label>
+        <input type="file" id="import_file" accept=".xlsx,.xls"
+               style="border:1px solid #ddd;padding:6px;border-radius:4px;width:100%;box-sizing:border-box">
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">
+        <button class="btn btn-secondary" onclick="closeImportModal()">Hủy</button>
+        <button class="btn btn-primary" onclick="submitImportExcel()">📤 Tải lên & Nhập</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  
+// ── DỮ LIỆU TỪ FLASK ────────────────────────────────────────
+const subjectsByGrade = {{ subjects_by_grade | tojson }};
+const allTeachers     = {{ teachers | tojson }};
+const classesJson     = {{ classes_json | tojson }};
+let currentPage  = {{ current_page }};
+let totalPages   = {{ total_pages }};
+let activeClassId = null;
+let activeWeekId  = null;
+
+// ── FILTER TRANG CHÍNH ───────────────────────────────────────
+function applyFilter() {
+  const khoi = document.getElementById('f_khoi').value;
+  const lop  = document.getElementById('f_lop').value;
+  const sem  = document.getElementById('f_semester').value;
+  window.location.href = `/admin/thoikhoabieu?grade_id=${khoi}&class_id=${lop}&semester_id=${sem}`;
+}
+
+function goPage(p) {
+  if (p < 1 || p > totalPages) return;
+  const khoi = document.getElementById('f_khoi').value;
+  const lop  = document.getElementById('f_lop').value;
+  const sem  = document.getElementById('f_semester').value;
+  window.location.href = `/admin/thoikhoabieu?grade_id=${khoi}&class_id=${lop}&semester_id=${sem}&page=${p}`;
+}
+
+function exportExcel() {
+  const sem = document.getElementById('f_semester').value;
+  const cls = document.getElementById('f_lop').value;
+  window.location.href = `/admin/tkb/export?semester_id=${sem}&class_id=${cls}`;
+}
+
+// ── MỞ MODAL ────────────────────────────────────────────────
+function openModal() {
+  document.getElementById('modal-title').textContent = '📋 Khai báo thời khóa biểu';
+  activeClassId = null; activeWeekId = null;
+  document.getElementById('m_lop').value  = '';
+  document.getElementById('m_tuan').value = '';
+  document.getElementById('tkbModal').classList.add('show');
+  resetGrid();
+}
+
+function openEditTKB(classId, weekId, label) {
+  activeClassId = classId; activeWeekId = weekId;
+  document.getElementById('modal-title').textContent = `📋 TKB - ${label}`;
+  document.getElementById('tkbModal').classList.add('show');
+  // Đặt đúng lớp + tuần trong modal filter
+  document.getElementById('m_tuan').value = weekId;
+  // Load classes trước rồi set lớp
+  const gradeId = classesJson.find(c => c.class_id === classId)?.grade_id;
+  if (gradeId) {
+    document.getElementById('m_khoi').value = gradeId;
+    loadModalClasses(classId);
+  }
+  fetchAndRender(classId, weekId);
+}
+
+function openNewTKB(classId, weekId, label) {
+  openEditTKB(classId, weekId, label);
+}
+
+function closeModal() {
+  document.getElementById('tkbModal').classList.remove('show');
+}
+
+// ── LOAD CLASSES VÀO MODAL SELECT ────────────────────────────
+function loadModalClasses(preSelectClassId) {
+  const gradeId = document.getElementById('m_khoi').value;
+  const filtered = classesJson.filter(c => String(c.grade_id) === String(gradeId));
+  const sel = document.getElementById('m_lop');
+  sel.innerHTML = '<option value="">-- Chọn lớp --</option>' +
+    filtered.map(c => `<option value="${c.class_id}">${c.class_name}</option>`).join('');
+  if (preSelectClassId) sel.value = preSelectClassId;
+  resetGrid();
+}
+
+function loadTKBGrid() {
+  const classId = parseInt(document.getElementById('m_lop').value);
+  const weekId  = parseInt(document.getElementById('m_tuan').value);
+  if (classId && weekId) fetchAndRender(classId, weekId);
+  else resetGrid();
+}
+
+// ── FETCH TKB TỪ SERVER ──────────────────────────────────────
+function fetchAndRender(classId, weekId) {
+  fetch(`/admin/tkb/data?class_id=${classId}&week_id=${weekId}`)
+    .then(r => r.json())
+    .then(d => renderGrid(d.entries || []))
+    .catch(() => renderGrid([]));
+}
+
+// ── RENDER LƯỚI TKB ──────────────────────────────────────────
+const SESSIONS = [
+  { label: 'Sáng',  periods: [1,2,3,4,5] },
+  { label: 'Chiều', periods: [1,2,3,4,5] }
+];
+const DAYS = [2,3,4,5,6];
+
+function resetGrid() {
+  document.getElementById('tkb-body').innerHTML =
+    '<tr><td colspan="8" style="text-align:center;padding:20px;color:#aaa">Chọn lớp và tuần để xem TKB</td></tr>';
+}
+
+
+function renderGrid(entries) {
+  const gradeId  = String(document.getElementById('m_khoi').value);
+  const subjects = subjectsByGrade[gradeId] || [];
+
+  const lookup = {};
+  entries.forEach(e => { lookup[`${e.day_of_week}_${e.session}_${e.period}`] = e; });
+
+  const tbody = document.getElementById('tkb-body');
+  tbody.innerHTML = '';
+  let stt = 0;
+
+  SESSIONS.forEach(ses => {
+    ses.periods.forEach((period, pi) => {
+      stt++;
+      const tr = document.createElement('tr');
+
+      // STT
+      const tdStt = document.createElement('td');
+      tdStt.className = 'cell-label';
+      tdStt.textContent = stt;
+      tr.appendChild(tdStt);
+
+      // Buổi (rowspan)
+      if (pi === 0) {
+        const tdBuoi = document.createElement('td');
+        tdBuoi.className = 'cell-label';
+        tdBuoi.rowSpan = ses.periods.length;
+        tdBuoi.textContent = ses.label;
+        tr.appendChild(tdBuoi);
+      }
+
+      // Tiết
+      const tdTiet = document.createElement('td');
+      tdTiet.className = 'cell-label';
+      tdTiet.textContent = `Tiết ${period}`;
+      tr.appendChild(tdTiet);
+
+      // Từng thứ
+      DAYS.forEach(day => {
+        const key = `${day}_${ses.label}_${period}`;
+        const ex  = lookup[key] || {};
+        const td  = document.createElement('td');
+
+        // ── SELECT MÔN HỌC ──
+        const selSub = document.createElement('select');
+        selSub.className = 'tkb-select';
+        selSub.dataset.day     = day;
+        selSub.dataset.session = ses.label;
+        selSub.dataset.period  = period;
+        selSub.dataset.field   = 'subject';
+        selSub.innerHTML = `<option value="">Chọn môn học</option>` +
+          subjects.map(s =>
+            `<option value="${s.subject_id}" ${ex.subject_id == s.subject_id ? 'selected' : ''}>${s.subject_name}</option>`
+          ).join('');
+
+        // ── SELECT GIÁO VIÊN ──
+        const selTea = document.createElement('select');
+        selTea.className = 'tkb-select';
+        selTea.dataset.day     = day;
+        selTea.dataset.session = ses.label;
+        selTea.dataset.period  = period;
+        selTea.dataset.field   = 'teacher';
+        selTea.style.marginTop = '3px';
+        selTea.innerHTML = `<option value="">Chọn giáo viên</option>` +
+          allTeachers.map(t =>
+            `<option value="${t.teacher_id}" ${ex.teacher_id == t.teacher_id ? 'selected' : ''}>${t.full_name}</option>`
+          ).join('');
+
+        // ── EVENT: chọn môn → lọc GV ──
+        selSub.addEventListener('change', function() {
+          const subjectId  = this.value;
+          const classId    = parseInt(document.getElementById('m_lop').value) || activeClassId;
+          const semesterId = parseInt(document.getElementById('m_semester').value) || {{ selected_semester or 0 }};
+          console.log('DEBUG:', {subjectId, classId, semesterId});
+
+          if (!subjectId || !classId || !semesterId) {
+            selTea.innerHTML = `<option value="">Chọn giáo viên</option>` +
+              allTeachers.map(t => `<option value="${t.teacher_id}">${t.full_name}</option>`).join('');
+            return;
+          }
+
+          fetch(`/admin/tkb/teachers-by-subject?subject_id=${subjectId}&class_id=${classId}&semester_id=${semesterId}`)
+            .then(r => r.json())
+            .then(d => {
+              const list = d.teachers || [];
+              if (list.length > 0) {
+                selTea.innerHTML = `<option value="">Chọn giáo viên</option>` +
+                  list.map(t => `<option value="${t.teacher_id}">${t.full_name}</option>`).join('');
+                if (list.length === 1) selTea.value = list[0].teacher_id;
+              } else {
+                selTea.innerHTML = `<option value="">⚠️ Chưa phân công — chọn thủ công</option>` +
+                  allTeachers.map(t => `<option value="${t.teacher_id}">${t.full_name}</option>`).join('');
+              }
+            })
+            .catch(() => {
+              selTea.innerHTML = `<option value="">Chọn giáo viên</option>` +
+                allTeachers.map(t => `<option value="${t.teacher_id}">${t.full_name}</option>`).join('');
+            });
+        });
+
+        td.appendChild(selSub);
+        td.appendChild(selTea);
+        tr.appendChild(td);
+      }); // end DAYS.forEach
+
+      tbody.appendChild(tr);
+    }); // end ses.periods.forEach
+  }); // end SESSIONS.forEach
+}
+
+// ── LƯU TKB ─────────────────────────────────────────────────
+function saveTKB() {
+  const classId    = parseInt(document.getElementById('m_lop').value)  || activeClassId;
+  const weekId     = parseInt(document.getElementById('m_tuan').value) || activeWeekId;
+  const semesterId = parseInt(document.getElementById('m_semester').value);
+  if (!classId || !weekId) { alert('Vui lòng chọn lớp và tuần!'); return; }
+
+  const entries = [];
+  document.querySelectorAll('.tkb-select[data-field="subject"]').forEach(sel => {
+    if (!sel.value) return;
+    const day = sel.dataset.day, ses = sel.dataset.session, per = sel.dataset.period;
+    const teaSel = document.querySelector(`.tkb-select[data-field="teacher"][data-day="${day}"][data-session="${ses}"][data-period="${per}"]`);
+    entries.push({
+      day_of_week: parseInt(day),
+      session:     ses,
+      period:      parseInt(per),
+      subject_id:  parseInt(sel.value),
+      teacher_id:  teaSel?.value ? parseInt(teaSel.value) : null,
+    });
+  });
+
+  fetch('/admin/tkb/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ class_id: classId, week_id: weekId, semester_id: semesterId, entries })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) { alert('✅ Lưu TKB thành công!'); closeModal(); location.reload(); }
+    else alert('❌ Lỗi: ' + (d.error || 'Không rõ'));
+  })
+  .catch(e => alert('❌ Lỗi kết nối: ' + e));
+}
+
+// ── XÓA TKB ─────────────────────────────────────────────────
+function deleteTKB() {
+  const classId = parseInt(document.getElementById('m_lop').value)  || activeClassId;
+  const weekId  = parseInt(document.getElementById('m_tuan').value) || activeWeekId;
+  if (!classId || !weekId) { alert('Vui lòng chọn lớp và tuần!'); return; }
+  if (!confirm('Xóa toàn bộ TKB của tuần này?')) return;
+
+  fetch('/admin/tkb/delete', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ class_id: classId, week_id: weekId })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) { alert('✅ Đã xóa!'); closeModal(); location.reload(); }
+    else alert('❌ ' + d.error);
+  });
+}
+
+// Đóng modal khi click ngoài
+document.getElementById('tkbModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ═══════════════════════════════════════════════════
+// 1. XEM TKB — Popup preview đẹp
+// ═══════════════════════════════════════════════════
+function xemTKB() {
+  const classId = parseInt(document.getElementById('m_lop').value) || activeClassId;
+  const weekId  = parseInt(document.getElementById('m_tuan').value) || activeWeekId;
+  const semId   = parseInt(document.getElementById('m_semester').value);
+
+  if (!classId || !weekId) { alert('Vui lòng chọn lớp và tuần!'); return; }
+
+  const className = document.getElementById('m_lop').selectedOptions[0]?.text || '';
+  const weekLabel = document.getElementById('m_tuan').selectedOptions[0]?.text || '';
+  const semName   = document.getElementById('m_semester').selectedOptions[0]?.text || '';
+  const gradeId   = String(document.getElementById('m_khoi').value);
+  const subjects  = subjectsByGrade[gradeId] || [];
+
+  fetch(`/admin/tkb/data?class_id=${classId}&week_id=${weekId}`)
+    .then(r => r.json())
+    .then(d => {
+      const entries = d.entries || [];
+      const lookup  = {};
+      entries.forEach(e => { lookup[`${e.day_of_week}_${e.session}_${e.period}`] = e; });
+
+      // Tạo popup preview
+      const win = window.open('', '_blank', 'width=1100,height=700,scrollbars=yes');
+      const subMap = {};
+      subjects.forEach(s => { subMap[s.subject_id] = s.subject_name; });
+      const teaMap = {};
+      allTeachers.forEach(t => { teaMap[t.teacher_id] = t.full_name; });
+
+      const DAYS_LABEL = ['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6'];
+
+      let rows = '';
+      let stt = 0;
+      [
+        { label:'Sáng',  periods:[1,2,3,4,5] },
+        { label:'Chiều', periods:[1,2,3,4,5] }
+      ].forEach(ses => {
+        ses.periods.forEach((p, pi) => {
+          stt++;
+          let buoiCell = pi === 0
+            ? `<td rowspan="${ses.periods.length}" style="background:#fff8e1;font-weight:700;text-align:center;vertical-align:middle">${ses.label}</td>`
+            : '';
+          let cells = DAYS.map(day => {
+            const ex = lookup[`${day}_${ses.label}_${p}`] || {};
+            const sub = ex.subject_id ? (subMap[ex.subject_id] || '') : '';
+            const tea = ex.teacher_id ? (teaMap[ex.teacher_id] || '') : '';
+            return `<td style="text-align:center;padding:6px 4px">
+              <div style="font-weight:600;color:#1a237e">${sub}</div>
+              <div style="font-size:11px;color:#555">${tea}</div>
+            </td>`;
+          }).join('');
+          rows += `<tr>
+            <td style="text-align:center;background:#f5f5f5">${stt}</td>
+            ${buoiCell}
+            <td style="text-align:center;background:#f5f5f5">Tiết ${p}</td>
+            ${cells}
+          </tr>`;
+        });
+      });
+
+      win.document.write(`<!DOCTYPE html><html><head>
+        <meta charset="UTF-8">
+        <title>TKB - ${className} - ${weekLabel}</title>
+        <style>
+          body{font-family:Arial;padding:20px;color:#333}
+          h2{text-align:center;color:#8B0000;margin-bottom:4px}
+          p{text-align:center;color:#555;margin:0 0 16px}
+          table{width:100%;border-collapse:collapse;font-size:13px}
+          th{background:#2c3e8c;color:#fff;padding:9px 6px;text-align:center;border:1px solid #3a5ba0}
+          td{border:1px solid #dde;padding:5px;vertical-align:middle}
+          @media print{button{display:none}}
+        </style>
+      </head><body>
+        <h2>THỜI KHÓA BIỂU</h2>
+        <p>Lớp: <strong>${className}</strong> &nbsp;|&nbsp; ${weekLabel} &nbsp;|&nbsp; ${semName}</p>
+        <div style="text-align:right;margin-bottom:10px">
+          <button onclick="window.print()" style="background:#8B0000;color:#fff;border:none;padding:7px 18px;border-radius:4px;cursor:pointer">🖨️ In TKB</button>
+        </div>
+        <table>
+          <thead><tr>
+            <th width="40">STT</th><th width="55">Buổi</th><th width="50">Tiết</th>
+            ${DAYS_LABEL.map(d=>`<th>${d}</th>`).join('')}
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </body></html>`);
+      win.document.close();
+    });
+}
+
+// ═══════════════════════════════════════════════════
+// 2. NHẬP TỪ EXCEL — mở modal upload
+// ═══════════════════════════════════════════════════
+function nhapTuExcel() {
+  const classId = parseInt(document.getElementById('m_lop').value) || activeClassId;
+  const weekId  = parseInt(document.getElementById('m_tuan').value) || activeWeekId;
+  if (!classId || !weekId) { alert('Vui lòng chọn lớp và tuần trước!'); return; }
+
+  document.getElementById('import_class_id').value = classId;
+  document.getElementById('import_week_id').value  = weekId;
+  document.getElementById('import_semester_id').value = document.getElementById('m_semester').value;
+  document.getElementById('modalImportExcel').classList.add('show');
+}
+
+function closeImportModal() {
+  document.getElementById('modalImportExcel').classList.remove('show');
+}
+
+function submitImportExcel() {
+  const file = document.getElementById('import_file').files[0];
+  if (!file) { alert('Vui lòng chọn file Excel!'); return; }
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('class_id',    document.getElementById('import_class_id').value);
+  fd.append('week_id',     document.getElementById('import_week_id').value);
+  fd.append('semester_id', document.getElementById('import_semester_id').value);
+
+  fetch('/admin/tkb/import', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(d => {
+      if (d.success) {
+        alert(`✅ Nhập thành công ${d.count} tiết!`);
+        closeImportModal();
+        fetchAndRender(
+          parseInt(document.getElementById('import_class_id').value),
+          parseInt(document.getElementById('import_week_id').value)
+        );
+      } else alert('❌ Lỗi: ' + d.error);
+    });
+}
+
+// ═══════════════════════════════════════════════════
+// 3. SAO CHÉP TKB từ tuần khác (cùng lớp)
+// ═══════════════════════════════════════════════════
+function saoCHepTKB() {
+  const classId = parseInt(document.getElementById('m_lop').value) || activeClassId;
+  const weekId  = parseInt(document.getElementById('m_tuan').value) || activeWeekId;
+  if (!classId || !weekId) { alert('Vui lòng chọn lớp và tuần đích trước!'); return; }
+
+  document.getElementById('copy_dest_class_id').value = classId;
+  document.getElementById('copy_dest_week_id').value  = weekId;
+  document.getElementById('copy_semester_id').value   = document.getElementById('m_semester').value;
+  document.getElementById('modalCopyTKB').classList.add('show');
+}
+
+function closeCopyModal() {
+  document.getElementById('modalCopyTKB').classList.remove('show');
+}
+
+function submitCopyTKB() {
+  const srcWeekId  = document.getElementById('copy_src_week_id').value;
+  const destWeekId = document.getElementById('copy_dest_week_id').value;
+  const classId    = document.getElementById('copy_dest_class_id').value;
+  const semId      = document.getElementById('copy_semester_id').value;
+
+  if (!srcWeekId) { alert('Vui lòng chọn tuần nguồn!'); return; }
+
+  fetch('/admin/tkb/copy', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ class_id: parseInt(classId), src_week_id: parseInt(srcWeekId), dest_week_id: parseInt(destWeekId), semester_id: parseInt(semId) })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      alert(`✅ Đã sao chép ${d.count} tiết!`);
+      closeCopyModal();
+      fetchAndRender(parseInt(classId), parseInt(destWeekId));
+    } else alert('❌ Lỗi: ' + d.error);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+// 4. LẤY DỮ LIỆU TỪ HK1 — copy toàn bộ TKB lớp sang HK hiện tại
+// ═══════════════════════════════════════════════════
+function layDuLieuHK1() {
+  const classId = parseInt(document.getElementById('m_lop').value) || activeClassId;
+  if (!classId) { alert('Vui lòng chọn lớp trước!'); return; }
+
+  const destSemId = parseInt(document.getElementById('m_semester').value);
+  const className = document.getElementById('m_lop').selectedOptions[0]?.text || '';
+
+  if (!confirm(`Sao chép TOÀN BỘ TKB lớp ${className} từ HK1 sang học kỳ hiện tại?\n\n⚠️ Dữ liệu TKB hiện tại của lớp sẽ bị GHI ĐÈ!`)) return;
+
+  fetch('/admin/tkb/copy-from-hk1', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ class_id: classId, dest_semester_id: destSemId })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      alert(`✅ Đã sao chép ${d.count} bản ghi TKB từ HK1!`);
+      location.reload();
+    } else alert('❌ Lỗi: ' + d.error);
+  });
+}
+</script>
+
+{% endblock %}

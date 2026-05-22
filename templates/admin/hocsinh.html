@@ -1,0 +1,901 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    /* CUSTOM UI: MODAL EXCEL UPLOAD & PREVIEW */
+    .modal-excel-box { width: 600px; background: white; border: 1px solid #999; font-family: Arial, sans-serif; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    .excel-header { display: flex; align-items: center; gap: 10px; color: #1565C0; font-weight: bold; font-size: 15px; padding: 10px 15px; border-bottom: 1px solid #ccc; background: #f8f9fa;}
+    .excel-body { padding: 20px; }
+    .excel-instruction { margin-top: 15px; line-height: 1.8; font-size: 13px; margin-left: 20px;}
+    .excel-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 15px; border-top: 1px solid #eee; }
+
+    .preview-stats { font-size: 13px; line-height: 1.6; margin-bottom: 15px; }
+    .preview-stats strong { color: #000; }
+    .table-wrapper { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; margin-bottom: 15px;}
+    .error-row { color: red; font-size: 12px;}
+
+    /* CUSTOM UI: TOAST NOTIFICATIONS (GÓC DƯỚI PHẢI)  */
+#toast-container {
+    position: fixed;
+    bottom: 30px;
+    right: 30px; /* Đổi từ left thành right */
+    z-index: 9999999;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 10px;
+}
+
+.toast-msg {
+    padding: 15px 40px;
+    border-radius: 4px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    font-weight: bold;
+    text-align: center;
+    font-size: 15px;
+    animation: slideInRight 0.3s ease-out forwards; /* Cập nhật tên animation */
+}
+
+.toast-success { background-color: #e6f4ea; color: #159f46; border: 1px solid #c3e6cb; }
+.toast-warning { background-color: #f5f5dc; color: #7d6608; border: 1px solid #e1d8b9; }
+
+/* Tạo animation mới trượt từ bên phải vào */
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; } /* 100% thay vì -100% */
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+    to { opacity: 0; }
+}
+
+    /* CUSTOM UI: MODAL XÁC NHẬN XÓA  */
+    .modal-delete-box { width: 550px; background: white; border: 1px solid #999; font-family: Arial, sans-serif; color: #000; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    .delete-header { text-align: center; color: #1565C0; font-weight: bold; font-size: 16px; padding: 15px; border-bottom: 1px solid #ccc; text-transform: uppercase; }
+    .delete-body { padding: 25px 35px; font-size: 14px; line-height: 1.6; }
+    .delete-body .highlight { font-weight: bold; }
+    .delete-body .warning-title { color: red; font-weight: bold; margin-top: 15px; }
+    .delete-body ul { margin-top: 5px; padding-left: 20px; margin-bottom: 20px; }
+    .delete-body ul li { margin-bottom: 5px; }
+    .delete-body ul li strong { color: red; font-style: italic; font-weight: bold; }
+    .delete-footer { display: flex; justify-content: center; gap: 20px; padding-bottom: 30px; }
+    .btn-delete-action { background: #1565C0; color: white; border: none; padding: 10px 25px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; }
+    .btn-delete-action:hover { background: #0d47a1; }
+    /* KHUNG TRANG CHÍNH & TOOLBAR */
+    .page-container { background: white; border: 1px solid #ddd; padding: 15px; min-height: 600px; font-family: Arial, sans-serif; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 12px; margin-bottom: 15px; }
+    .page-title { color: #1565C0; font-weight: bold; font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px; }
+    .btn-group { display: flex; gap: 5px; }
+    .action-btn { color: white; border: none; padding: 7px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; }
+    .btn-blue { background: #1565C0; }
+    .btn-red { background: #d32f2f; }
+    .btn-excel { background: #0277bd; }
+
+    /* GHI CHÚ & BỘ LỌC */
+    .note-box { background: #fff; border: 1px solid #eee; padding: 15px; margin-bottom: 20px; font-size: 13px; line-height: 1.6; }
+    .note-title { font-weight: bold; margin-bottom: 5px; display: block; }
+    .btn-toggle-note { color: #1565C0; text-decoration: none; font-weight: bold; cursor: pointer; }
+    .filter-container { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; font-size: 14px; }
+    .filter-item { display: flex; align-items: center; gap: 8px; font-weight: bold; }
+    .filter-item label { min-width: 40px; }
+    .filter-item select, .filter-item input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 3px; outline: none; background: #fff; }
+    .filter-item select { width: 180px; }
+    .search-wrapper { flex: 1; max-width: 280px; }
+    .search-wrapper input { width: 100%; padding-right: 35px; }
+    .filter-container button { padding: 7px 14px; }
+
+    /* BẢNG DỮ LIỆU */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #1162a8; color: white; padding: 12px; border: 1px solid #ccc; }
+    td { padding: 10px; border: 1px solid #ccc; text-align: center; }
+    .text-bold { font-weight: bold; }
+    .text-left { text-align: left; }
+    .row-gray { background: #f4f5f7; }
+
+    /* POPUP QUẢN LÝ HỒ SƠ */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999999 !important; justify-content: center; align-items: center; }
+    .modal-box-lg { width: 1000px; background: white; border-radius: 4px; overflow: hidden; border: 1px solid #999; font-family: Arial, sans-serif; font-size: 13px; color: #333; }
+    .popup-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #f8f9fa; border-bottom: 1px solid #ddd; }
+
+    .popup-body { padding: 25px 35px; display: flex; gap: 30px; }
+    .avatar-sec { width: 140px; text-align: center; }
+    .avatar-frame { width: 120px; height: 150px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; font-size: 50px; color: #eee; margin: 0 auto 10px auto; }
+
+    .form-wrapper { flex: 1; display: flex; flex-direction: column; gap: 20px; }
+    .form-wrapper label { font-size: 13px; font-weight: bold; color: #333; margin: 0; padding: 0; display: block; }
+    .form-wrapper .label-red span { color: red; }
+
+    /* Input Container & Real-time Errors */
+    .input-container { position: relative; width: 100%; }
+    .input-field { font-family: Arial, sans-serif; font-size: 13px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 3px; width: 100%; box-sizing: border-box; transition: border-color 0.2s; }
+    .input-error { border-color: #d32f2f !important; background-color: #ffebee; }
+    .error-text { color: #d32f2f; font-size: 11px; margin-top: 3px; display: none; font-weight: bold; }
+
+    .top-section { display: flex; gap: 40px; }
+    .col-left { flex: 1; display: grid; grid-template-columns: 100px 1fr; gap: 20px 10px; align-content: start; align-items: center; }
+    .col-right { flex: 1; display: grid; grid-template-columns: 120px 1fr; gap: 20px 10px; align-content: start; align-items: start; }
+    .address-stack { display: flex; flex-direction: column; gap: 10px; }
+
+    .section-title { color: #1565C0; font-weight: bold; font-size: 14px; margin: 0; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    .contact-grid { display: grid; grid-template-columns: 130px 1fr 130px 1fr; gap: 20px 10px; align-items: center; }
+    .note-section { font-size: 13px; margin-bottom: 20px; line-height: 1.6; color: #000; }
+    .note-section ul { margin: 5px 0; padding-left: 20px; }
+    .note-content { margin-bottom: 8px; }
+    .note-content li { margin-bottom: 6px; }
+    .note-reopen { font-size: 13px; }
+    .text-link { color: #1565C0; text-decoration: none; cursor: pointer; font-weight: bold; }
+</style>
+
+<div class="page-container">
+    <div class="toolbar">
+        <h4 class="page-title">👤 Học sinh</h4>
+        <div class="btn-group">
+            <button class="action-btn btn-blue" onclick="openAddModal()">Thêm mới</button>
+            <button class="action-btn btn-blue" onclick="triggerDelete()">Xoá</button>
+            <button class="action-btn btn-excel" onclick="window.location.href='{{ url_for('tai_mau_hocsinh') }}'">Tải file Excel mẫu</button>
+            <button class="action-btn btn-excel" onclick="openModal('modal-upload-excel')">Nhập từ file Excel</button>
+            <button class="action-btn btn-excel" onclick="exportExcel()">Xuất Excel</button>
+        </div>
+    </div>
+
+    <div class="note-section">
+        <div class="note-content">
+            <strong>Hướng dẫn/ Ghi chú:</strong>
+            <ul>
+                <li>Kích [ Thêm mới ] để tạo hồ sơ học sinh trực tiếp trên hệ thống.</li>
+                <li>Kích [ Nhập từ file Excel ] để tải lên danh sách học sinh hàng loạt theo định dạng mẫu chuẩn.</li>
+                <li>Để cập nhật thông tin, kích vào biểu tượng (✎) tương ứng tại dòng của học sinh.</li>
+                <li>Tích chọn ô vuông bên cạnh các học sinh và kích [ Xoá ] để xóa hồ sơ khỏi hệ thống. <a class="text-link" onclick="toggleNote(this)">[Đóng ghi chú]</a></li>
+            </ul>
+        </div>
+        <div class="note-reopen" style="display: none;">
+            <strong>Hướng dẫn/ Ghi chú:</strong> <a class="text-link" onclick="toggleNote(this)">[+] Xem hướng dẫn/ghi chú</a>
+        </div>
+    </div>
+
+    <!-- BỘ LỌC -->
+    <form method="GET" action="{{ url_for('quanly_hocsinh') }}" id="filterForm">
+        <div class="filter-container">
+            <div class="filter-item">
+                <label>Khối:</label>
+                <select name="grade_id" id="filter_grade_id" onchange="handleGradeChange()">
+                    <option value="">-- Tất cả --</option>
+                    {% for g in grades %}<option value="{{ g.grade_id }}" {% if g.grade_id|string == f_grade %}selected{% endif %}>{{ g.grade_name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="filter-item">
+                <label>Lớp:</label>
+                <select name="class_id" id="filter_class_id" onchange="this.form.submit()">
+                    <option value="">-- Tất cả lớp --</option>
+                </select>
+            </div>
+            <div class="filter-item search-wrapper">
+                <input type="text" name="search_name" value="{{ f_name }}" placeholder="Tìm học sinh...">
+            </div>
+            <button type="submit" class="action-btn btn-blue" style="margin:0">Áp dụng</button>
+        </div>
+    </form>
+
+    <!-- BẢNG DỮ LIỆU -->
+    <table>
+        <thead>
+            <tr>
+                <th style="width:50px">STT</th>
+                <th style="width:40px"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
+                <th style="width:50px">Sửa</th>
+                <th>Mã định danh</th>
+                <th>Họ tên</th>
+                <th>Ngày sinh</th>
+                <th>Giới tính</th>
+                <th>Dân tộc</th>
+                <th>Trạng thái</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in students %}
+            <tr class="{% if loop.index % 2 == 0 %}row-gray{% endif %}">
+                <td>{{ loop.index }}</td>
+                <td><input type="checkbox" class="student-cb" value="{{ s.student_id }}"></td>
+                
+                <td>
+                    <button type="button" style="border:none; background:none; cursor:pointer; color:#1565C0; font-size:16px;" 
+                            onclick="editStudent(this.dataset.student)" 
+                            data-student="{{ s | tojson | forceescape }}">✎</button>
+                </td>
+                
+                <td>{{ s.ma_dinh_danh }}</td>
+                
+                <td class="text-left text-bold">{{ s.ho_ten }}</td>
+                <td>{{ s.ngay_sinh }}</td>
+                <td>{{ s.gioi_tinh }}</td>
+                <td>{{ s.dan_toc }}</td>
+                <td style="color:green">Đang học</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- POPUP QUẢN LÝ HỒ SƠ -->
+<div id="modal-hs" class="modal-overlay">
+    <div class="modal-box-lg">
+        <form id="hsForm" method="POST" onsubmit="return validateForm(event)">
+            <input type="hidden" name="action" value="save">
+            <input type="hidden" name="student_id" id="edit_id">
+
+            <div class="popup-header">
+                <b style="color:#1565C0; font-size:15px;">📂 Quản lý hồ sơ học sinh</b>
+                <div class="btn-group">
+                    <button type="submit" class="action-btn btn-blue" id="btnSubmit">Tạo mới/ Cập nhật</button>
+                    <button type="button" class="action-btn btn-blue" style="background:#666" onclick="closeModal('modal-hs')">Huỷ</button>
+                </div>
+            </div>
+
+            <div class="popup-body">
+                <div class="avatar-sec">
+                    <div class="avatar-frame">👤</div>
+                    <button type="button" class="input-field" style="cursor:pointer; width: 100px;">Chọn ảnh...</button>
+                </div>
+
+                <div class="form-wrapper">
+                    <div class="top-section">
+                        <div class="col-left">
+                            <label class="label-red">Khối học <span>[1]</span>:</label>
+                            <div class="input-container">
+                                <select name="grade_id" id="form_grade" class="input-field req-field" onchange="updateFormClassList()">
+                                    <option value="">Chọn</option>
+                                    {% for g in grades %}<option value="{{ g.grade_id }}">{{ g.grade_name }}</option>{% endfor %}
+                                </select>
+                                <div class="error-text">Vui lòng chọn Khối học.</div>
+                            </div>
+
+                            <label class="label-red">Lớp học <span>[2]</span>:</label>
+                            <div class="input-container">
+                                <select name="class_id" id="form_class" class="input-field req-field">
+                                    <option value="">Chọn</option>
+                                </select>
+                                <div class="error-text">Vui lòng chọn Lớp học.</div>
+                            </div>
+
+                            <label class="label-red">Họ tên <span>[3]</span>:</label>
+                            <div class="input-container">
+                                <input type="text" name="ho_ten" id="form_name" class="input-field req-field" placeholder="Nhập họ và tên học sinh">
+                                <div class="error-text">Họ tên không được để trống.</div>
+                            </div>
+
+                            <label class="label-red">Ngày sinh <span>[4]</span>:</label>
+                            <div class="input-container">
+                                <input type="date" name="ngay_sinh" id="form_dob" class="input-field">
+                                <div class="error-text" id="dob_error">Độ tuổi không hợp lệ theo quy định.</div>
+                            </div>
+
+                            <label class="label-red">Giới tính <span>[5]</span>:</label>
+                            <div class="input-container">
+                                <select name="gioi_tinh" id="form_gender" class="input-field req-field">
+                                    <option value="">Chọn</option>
+                                    <option value="Nam">Nam</option>
+                                    <option value="Nữ">Nữ</option>
+                                </select>
+                                <div class="error-text">Vui lòng chọn Giới tính.</div>
+                            </div>
+
+                            <label class="label-red">Dân tộc <span>[6]</span>:</label>
+                            <div class="input-container">
+                                <input type="text" name="dan_toc" id="form_nation" class="input-field req-field" value="" placeholder="Nhập dân tộc (VD: Kinh, Ê-đê...)">
+                                <div class="error-text">Dân tộc không được để trống.</div>
+                            </div>
+
+                            <label>Tôn giáo [7]:</label>
+                            <div class="input-container">
+                                <input type="text" name="ton_giao" id="form_ton_giao" class="input-field" placeholder="Nhập tôn giáo (VD: Phật giáo, Công giáo,...)">
+                            </div>
+
+                            <label>Quốc tịch [8]:</label>
+                            <div class="input-container">
+                                <input type="text" name="quoc_tich" id="form_quoc_tich" class="input-field" list="quoc_tich_options" value="Việt Nam" placeholder="Nhập quốc tịch">
+                                <datalist id="quoc_tich_options">
+                                    <option value="Việt Nam"></option>
+                                    <option value="Hàn Quốc"></option>
+                                    <option value="Trung Quốc"></option>
+                                    <option value="Mỹ"></option>
+                                </datalist>
+                            </div>
+                        </div>
+
+                        <div class="col-right">
+                            <label style="color: #1565C0; font-size: 14px; grid-column: span 2; margin-bottom: 5px;">Thông tin cư trú</label>
+
+                            <label class="label-red" style="margin-top: 6px;">Nơi thường trú <span>[9]</span>:</label>
+                            <div class="address-stack">
+                                <div class="input-container">
+                                    <select name="tinh_thuong_tru" id="form_tinh_tt" class="input-field req-field">
+                                        <option value="">Tỉnh/Thành phố</option>
+                                    </select>
+                                    <div class="error-text">Vui lòng chọn Tỉnh/Thành phố.</div>
+                                </div>
+                                <div class="input-container">
+                                    <select name="xa_thuong_tru" id="form_xa_tt" class="input-field req-field">
+                                        <!-- Chữ đã được rút gọn cho chuẩn mô hình 2 cấp -->
+                                        <option value="">Chọn Phường/Xã</option>
+                                    </select>
+                                    <div class="error-text">Vui lòng chọn Phường/Xã.</div>
+                                </div>
+                                <input type="text" name="dia_chi" id="form_dia_chi" class="input-field" placeholder="Nhập tổ/ thôn/ xóm thường trú">
+                            </div>
+
+                            <label style="margin-top: 6px;">Quê quán [10]:</label>
+                            <div class="address-stack">
+                                <select name="tinh_que_quan" id="form_tinh_qq" class="input-field">
+                                    <option value="">Tỉnh/Thành phố</option>
+                                </select>
+                                <select name="xa_que_quan" id="form_xa_qq" class="input-field">
+                                    <option value="">Chọn Phường/Xã</option>
+                                </select>
+                                <input type="text" class="input-field" placeholder="Nhập tổ/ thôn/ xóm thường trú">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-title">Thông tin liên hệ, gia đình</div>
+                    <div class="contact-grid">
+                        <label>Tên phụ huynh [11]:</label>
+<input type="text" name="ten_phu_huynh" id="form_parent" class="input-field" placeholder="Nhập tên phụ huynh">
+
+<label>Mối quan hệ [13]:</label>
+<input type="text" name="quan_he_ph" id="form_quan_he" class="input-field" placeholder="VD: Cha, Mẹ, Ông, Bà...">
+
+<label>Nghề nghiệp [12]:</label>
+<input type="text" name="nghe_nghiep_ph" id="form_nghe_nghiep" class="input-field" placeholder="Nhập nghề nghiệp">
+
+<label>SĐT [14]:</label>
+<input type="text" name="sdt_ph" id="form_phone" class="input-field" placeholder="Nhập số điện thoại liên hệ">
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- KHU VỰC HIỂN THỊ TOAST NOTIFICATION -->
+<div id="toast-container"></div>
+
+<!-- MODAL XÁC NHẬN XOÁ -->
+<div id="modal-delete" class="modal-overlay">
+    <div class="modal-delete-box">
+        <div class="delete-header">Xác nhận xoá</div>
+        <div class="delete-body">
+            <p>Bạn đang yêu cầu xóa <span id="delete-count-text" class="highlight">00</span> học sinh khỏi danh sách.</p>
+            <div class="warning-title">Lưu ý:</div>
+            <ul>
+                <li>Thao tác này sẽ xóa vĩnh viễn hồ sơ và toàn bộ quá trình học tập của các học sinh này khỏi hệ thống.<br>
+                Thao tác này <strong>KHÔNG THỂ</strong> khôi phục.</li>
+            </ul>
+            <p style="font-weight:bold; font-style:italic;">Bạn có chắc chắn muốn thực hiện ?</p>
+        </div>
+        <div class="delete-footer">
+            <button type="button" class="btn-delete-action" onclick="closeModal('modal-delete')">Về lại/ Huỷ bỏ</button>
+            <button type="button" class="btn-delete-action" onclick="submitDelete()">ĐỒNG Ý XOÁ</button>
+        </div>
+    </div>
+</div>
+<!-- MODAL 3: UPLOAD FILE EXCEL -->
+<div id="modal-upload-excel" class="modal-overlay">
+    <div class="modal-excel-box">
+        <div class="excel-header">
+            <span>📄 Danh sách học sinh mới từ file Excel</span>
+        </div>
+        <div class="excel-body">
+            <!-- Nút tải file mẫu -->
+            <a href="{{ url_for('tai_mau_hocsinh') }}" class="btn-delete-action" style="text-decoration: none; display: inline-block;">Tải file mẫu có dữ liệu</a>
+
+            <div class="excel-instruction">
+                1. Hướng dẫn bật macro trên file excel mẫu (bắt buộc)<br>
+                2. Các cột tiêu đề màu đỏ là bắt buộc<br>
+                3. Không thay đổi, thêm, xóa các cột trong file mẫu.<br>
+                4. Không thay đổi định dạng file mẫu.
+            </div>
+
+            <form id="uploadExcelForm" style="margin-top: 20px;">
+                <input type="file" id="excel_file" name="excel_file" accept=".xlsx, .xls" style="border: 1px solid #ccc; padding: 5px;">
+            </form>
+        </div>
+        <div class="excel-footer">
+            <button type="button" class="btn-delete-action" style="background:#666;" onclick="closeModal('modal-upload-excel')">Huỷ bỏ</button>
+            <button type="button" class="btn-delete-action" onclick="submitExcelPreview()">Tải lên</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL 4: XÁC NHẬN NHẬP DỮ LIỆU (PREVIEW LỖI) -->
+<div id="modal-preview-excel" class="modal-overlay">
+    <div class="modal-excel-box" style="width: 700px;">
+        <div class="delete-header" style="background: white; border-bottom: none; padding-bottom: 0;">XÁC NHẬN NHẬP DỮ LIỆU</div>
+        <hr style="border-top: 1px solid #ccc; margin: 10px 0;">
+
+        <div class="excel-body" style="padding-top: 0;">
+            <div class="preview-stats">
+                Tên file: <strong id="pv_filename">Danh_sach.xlsx</strong><br>
+                Tổng số dòng đọc được: <strong id="pv_total">0</strong><br><br>
+                Hợp lệ: <strong id="pv_valid">0</strong> dòng<br>
+                Báo lỗi: <strong id="pv_error">0</strong> dòng
+            </div>
+
+            <div style="color: red; font-weight: bold; font-size: 13px; margin-bottom: 5px;">Chi tiết các dòng lỗi</div>
+            <div class="table-wrapper">
+                <table style="width: 100%; border: none;">
+                    <thead style="position: sticky; top: 0;">
+                        <tr>
+                            <th style="background: #1162a8; font-size:12px; padding:8px;">Dòng</th>
+                            <th style="background: #1162a8; font-size:12px; padding:8px;">Họ tên</th>
+                            <th style="background: #1162a8; font-size:12px; padding:8px;">Chi tiết lỗi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pv_error_table">
+                        <!-- JS sẽ đổ dữ liệu dòng lỗi vào đây -->
+                    </tbody>
+                </table>
+            </div>
+
+            <p style="font-size: 13px; font-weight: bold; font-style: italic;">
+                Hệ thống sẽ bỏ qua các dòng lỗi và chỉ nhập <span id="pv_valid_txt">0</span> dòng hợp lệ.<br>
+                Bạn có muốn tiếp tục?
+            </p>
+        </div>
+
+        <form method="POST" action="{{ url_for('quanly_hocsinh') }}" id="confirmImportForm">
+            <input type="hidden" name="action" value="confirm_import">
+            <input type="hidden" name="valid_data" id="hidden_valid_data">
+            <div class="excel-footer" style="justify-content: center; gap: 20px;">
+                <button type="button" class="btn-delete-action" onclick="closeModal('modal-preview-excel')">Về lại/ Huỷ bỏ</button>
+                <button type="submit" class="btn-delete-action" id="btnConfirmImport">ĐỒNG Ý XÁC NHẬN</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const allClasses = {{ classes | tojson | safe }};
+    const currentClassId = "{{ f_class }}";
+    let vnData = []; // Lưu API Data
+
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+        clearAllErrors(); // Xóa lỗi khi đóng popup
+    }
+
+    // ==========================================
+    // 1. GỌI API ĐỊA GIỚI HÀNH CHÍNH
+    // ==========================================
+    fetch('https://provinces.open-api.vn/api/?depth=3')
+        .then(response => response.json())
+        .then(data => {
+            vnData = data;
+            loadProvinces('form_tinh_tt');
+            loadProvinces('form_tinh_qq');
+        });
+
+    function loadProvinces(selectId) {
+        const select = document.getElementById(selectId);
+        select.innerHTML = '<option value="">Tỉnh/Thành phố</option>';
+        vnData.forEach(p => {
+            select.innerHTML += `<option value="${p.name}" data-code="${p.code}">${p.name}</option>`;
+        });
+    }
+
+    // -----------------------------------------------------------------------------------
+    // [UPDATE] MÔ HÌNH CHÍNH QUYỀN 2 CẤP (Tỉnh -> Xã)
+    // Loại bỏ cấp Huyện: Lấy toàn bộ phường/xã của Tỉnh đưa vào 1 danh sách duy nhất.
+    // -----------------------------------------------------------------------------------
+    function loadWards(tinhId, xaId) {
+        const tinhSelect = document.getElementById(tinhId);
+        const xaSelect = document.getElementById(xaId);
+        xaSelect.innerHTML = '<option value="">Chọn Phường/Xã</option>';
+
+        const selectedOpt = tinhSelect.options[tinhSelect.selectedIndex];
+        if (selectedOpt && selectedOpt.dataset.code) {
+            const tinh = vnData.find(p => p.code == selectedOpt.dataset.code);
+
+            if (tinh && tinh.districts) {
+                let allWards = [];
+
+                // Gom toàn bộ xã/phường từ tất cả các huyện của tỉnh này
+                tinh.districts.forEach(d => {
+                    if (d.wards) {
+                        allWards = allWards.concat(d.wards);
+                    }
+                });
+
+                // Sắp xếp các Xã/Phường theo bảng chữ cái để người dùng dễ tìm
+                allWards.sort((a, b) => a.name.localeCompare(b.name));
+
+                // Đổ thẳng vào Select Box
+                allWards.forEach(w => {
+                    const opt = document.createElement('option');
+                    opt.value = w.name;
+                    opt.textContent = w.name;
+                    xaSelect.appendChild(opt);
+                });
+            }
+        }
+    }
+
+    // Gắn sự kiện tải Xã (bỏ qua Huyện) khi đổi Tỉnh
+    document.getElementById('form_tinh_tt').addEventListener('change', () => loadWards('form_tinh_tt', 'form_xa_tt'));
+    document.getElementById('form_tinh_qq').addEventListener('change', () => loadWards('form_tinh_qq', 'form_xa_qq'));
+
+    // ==========================================
+    // 2. LOGIC LỌC LỚP THEO KHỐI & BỘ LỌC CHÍNH
+    // ==========================================
+    function handleGradeChange() {
+        updateClassFilter();
+        document.getElementById('filterForm').submit();
+    }
+
+    // 1. Sửa bộ lọc lớp ở trang chính
+    function updateClassFilter() {
+        const gradeId = document.getElementById('filter_grade_id').value;
+        const classSelect = document.getElementById('filter_class_id');
+        classSelect.innerHTML = '<option value="">-- Tất cả lớp --</option>';
+
+        if (gradeId) {
+            // Lọc chính xác theo grade_id
+            const filtered = allClasses.filter(c => String(c.grade_id) === String(gradeId));
+            filtered.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.class_id;
+                opt.textContent = c.class_name;
+                if (String(c.class_id) === String(currentClassId)) opt.selected = true;
+                classSelect.appendChild(opt);
+            });
+        }
+    }
+
+    // Cập nhật danh sách lớp trong form modal thêm/sửa
+    function updateFormClassList(selectedClassId = null) {
+        const gradeId = document.getElementById('form_grade').value;
+        const classSelect = document.getElementById('form_class');
+        classSelect.innerHTML = '<option value="">Chọn</option>';
+
+        if (gradeId) {
+            const filtered = allClasses.filter(c => String(c.grade_id) === String(gradeId));
+            filtered.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.class_id;
+                opt.textContent = c.class_name;
+                if (selectedClassId && String(c.class_id) === String(selectedClassId)) opt.selected = true;
+                classSelect.appendChild(opt);
+            });
+        }
+    }
+
+    // ==========================================
+    // 2. LOGIC LỌC LỚP THEO KHỐI & BỘ LỌC CHÍNH
+    // ==========================================
+    function handleGradeChange() {
+        updateClassFilter();
+        document.getElementById('filterForm').submit();
+    }
+
+    // Cập nhật bộ lọc lớp ở trang chính
+    function updateClassFilter() {
+        const gradeId = document.getElementById('filter_grade_id').value;
+        const classSelect = document.getElementById('filter_class_id');
+        classSelect.innerHTML = '<option value="">-- Tất cả lớp --</option>';
+
+        if (gradeId) {
+            const filtered = allClasses.filter(c => String(c.grade_id) === String(gradeId));
+            filtered.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.class_id;
+                opt.textContent = c.class_name;
+                if (String(c.class_id) === String(currentClassId)) opt.selected = true;
+                classSelect.appendChild(opt);
+            });
+        }
+    }
+
+    // Cập nhật danh sách lớp trong form modal thêm/sửa
+    function updateFormClassList(selectedClassId = null) {
+        const gradeId = document.getElementById('form_grade').value;
+        const classSelect = document.getElementById('form_class');
+        classSelect.innerHTML = '<option value="">Chọn</option>';
+
+        if (gradeId) {
+            const filtered = allClasses.filter(c => String(c.grade_id) === String(gradeId));
+            filtered.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.class_id;
+                opt.textContent = c.class_name;
+                if (selectedClassId && String(c.class_id) === String(selectedClassId)) opt.selected = true;
+                classSelect.appendChild(opt);
+            });
+        }
+    }
+
+    // Gắn sự kiện khi trang load
+    document.addEventListener('DOMContentLoaded', function() {
+        updateClassFilter();
+    });
+    // ==========================================
+    // 3. REAL-TIME VALIDATION (BÁO LỖI NGAY LẬP TỨC)
+    // ==========================================
+    const reqFields = document.querySelectorAll('.req-field');
+
+    function showError(el, customMsg = null) {
+        el.classList.add('input-error');
+        const errText = el.nextElementSibling;
+        if (errText && errText.classList.contains('error-text')) {
+            if (customMsg) errText.innerText = customMsg;
+            errText.style.display = 'block';
+        }
+    }
+
+    function clearError(el) {
+        el.classList.remove('input-error');
+        const errText = el.nextElementSibling;
+        if (errText && errText.classList.contains('error-text')) {
+            errText.style.display = 'none';
+        }
+    }
+
+    function clearAllErrors() {
+        reqFields.forEach(el => clearError(el));
+        clearError(document.getElementById('form_dob'));
+    }
+
+    // Lắng nghe sự kiện gõ/chọn trên các trường bắt buộc
+    reqFields.forEach(el => {
+        el.addEventListener('input', function() {
+            if (!this.value.trim()) showError(this);
+            else clearError(this);
+        });
+        el.addEventListener('blur', function() {
+            if (!this.value.trim()) showError(this);
+        });
+    });
+
+    // RÀNG BUỘC ĐỘ TUỔI (TRÊN 5 TUỔI)
+    function validateAgeRealtime() {
+        const dobEl = document.getElementById('form_dob');
+        // Bỏ qua nếu chưa nhập ngày sinh
+        if (!dobEl || !dobEl.value) {
+            clearError(dobEl);
+            return true;
+        }
+
+        const birthYear = new Date(dobEl.value).getFullYear();
+        const currentYear = new Date().getFullYear();
+        const age = currentYear - birthYear;
+
+        // Chỉ cần độ tuổi > 5 (từ 6 tuổi trở lên)
+        if (age <= 5) {
+            showError(dobEl, `Học sinh tiểu học phải trên 5 tuổi. (Hiện tại tính theo năm: ${age} tuổi)`);
+            return false;
+        } else {
+            clearError(dobEl);
+            return true;
+        }
+    }
+    document.getElementById('form_dob').addEventListener('change', validateAgeRealtime);
+
+    // Bắt sự kiện khi nhấn nút Submit
+    function validateForm(e) {
+        let isValid = true;
+
+        reqFields.forEach(el => {
+            if (!el.value.trim()) {
+                showError(el);
+                isValid = false;
+            }
+        });
+
+        if (!validateAgeRealtime()) {
+            isValid = false;
+        }
+
+        if (!isValid) {
+            e.preventDefault();
+            return false;
+        }
+        return true;
+    }
+
+    // ==========================================
+    // 4. MỞ POPUP & XÓA
+    // ==========================================
+    function openAddModal() {
+        document.getElementById('hsForm').reset();
+        document.getElementById('edit_id').value = '';
+        clearAllErrors();
+
+        // Để trống Khối học mặc định là "Chọn"
+        document.getElementById('form_grade').value = "";
+
+        updateFormClassList();
+        openModal('modal-hs');
+    }
+
+    function editStudent(jsonStr) {
+        const s = JSON.parse(jsonStr);
+        clearAllErrors();
+        document.getElementById('edit_id').value = s.student_id || '';
+        document.getElementById('form_name').value = s.ho_ten || '';
+        document.getElementById('form_dob').value = s.ngay_sinh || '';
+        document.getElementById('form_gender').value = s.gioi_tinh || 'Nam';
+        document.getElementById('form_nation').value = s.dan_toc || 'Kinh';
+        if(document.getElementById('form_ton_giao')) document.getElementById('form_ton_giao').value = s.ton_giao || 'Không';
+
+        setTimeout(() => {
+            if(s.tinh_thuong_tru) {
+                document.getElementById('form_tinh_tt').value = s.tinh_thuong_tru;
+                loadWards('form_tinh_tt', 'form_xa_tt');
+                setTimeout(() => { if(s.xa_thuong_tru) document.getElementById('form_xa_tt').value = s.xa_thuong_tru; }, 100);
+            }
+            if(s.tinh_que_quan) {
+                document.getElementById('form_tinh_qq').value = s.tinh_que_quan;
+                loadWards('form_tinh_qq', 'form_xa_qq');
+                setTimeout(() => { if(s.xa_que_quan) document.getElementById('form_xa_qq').value = s.xa_que_quan; }, 100);
+            }
+        }, 500);
+
+        if(document.getElementById('form_dia_chi')) document.getElementById('form_dia_chi').value = s.dia_chi || '';
+        if(document.getElementById('form_parent')) document.getElementById('form_parent').value = s.ten_phu_huynh || '';
+        if(document.getElementById('form_quan_he')) document.getElementById('form_quan_he').value = s.quan_he_ph || '';
+        if(document.getElementById('form_nghe_nghiep')) document.getElementById('form_nghe_nghiep').value = s.nghe_nghiep_ph || '';
+        if(document.getElementById('form_phone')) document.getElementById('form_phone').value = s.sdt_ph || '';
+
+        if (s.student_enrollments && s.student_enrollments.length > 0) {
+            const classId = s.student_enrollments[0].class_id;
+            const classObj = allClasses.find(c => c.class_id === classId);
+            if (classObj) {
+                document.getElementById('form_grade').value = classObj.grade_id;
+                updateFormClassList(classId);
+            }
+        }
+
+        openModal('modal-hs');
+    }
+
+    function toggleNote(el) {
+        const section = el.closest('.note-section');
+        const content = section.querySelector('.note-content');
+        const reopen = section.querySelector('.note-reopen');
+        if (content.style.display !== 'none') {
+            content.style.display = 'none';
+            reopen.style.display = 'block';
+        } else {
+            content.style.display = 'block';
+            reopen.style.display = 'none';
+        }
+    }
+
+    // Hàm chọn tất cả checkbox
+    function toggleSelectAll(checkbox) {
+        const checkboxes = document.querySelectorAll('.student-cb');
+        checkboxes.forEach(cb => cb.checked = checkbox.checked);
+    }
+
+    // Biến lưu danh sách học sinh cần xóa
+    let selectedStudentsToDelete = [];
+
+    // Hàm tạo thông báo nổi (Toast)
+    function showToast(message, type) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast-msg toast-${type}`;
+        toast.innerText = message;
+        container.appendChild(toast);
+
+        // Tự động biến mất sau 3 giây
+        setTimeout(() => {
+            toast.style.animation = "fadeOut 0.3s forwards";
+            setTimeout(() => { toast.remove(); }, 300);
+        }, 3000);
+    }
+
+    // Nút Xóa trên Toolbar gọi hàm này
+    function triggerDelete() {
+        const selected = Array.from(document.querySelectorAll('.student-cb:checked')).map(cb => cb.value);
+
+        // Cảnh báo nếu chưa chọn ai
+        if (selected.length === 0) {
+            showToast("Vui lòng tick chọn ít nhất một học sinh trong danh sách", "warning");
+            return;
+        }
+
+        // Nếu đã chọn, mở Popup xác nhận Xóa
+        selectedStudentsToDelete = selected;
+        const formattedCount = selected.length < 10 ? `0${selected.length}` : selected.length;
+        document.getElementById('delete-count-text').innerText = formattedCount;
+        openModal('modal-delete');
+    }
+
+    // Nút "ĐỒNG Ý XOÁ" trong Popup gọi hàm này
+    function submitDelete() {
+        const f = document.createElement('form');
+        f.method = 'POST';
+        f.innerHTML = `<input type="hidden" name="action" value="delete"><input type="hidden" name="student_ids" value="${selectedStudentsToDelete.join(',')}">`;
+        document.body.appendChild(f);
+        f.submit();
+    }
+
+    // ==========================================
+    // XỬ LÝ UPLOAD EXCEL BẰNG AJAX (FETCH)
+    // ==========================================
+    function submitExcelPreview() {
+        const fileInput = document.getElementById('excel_file');
+        if (!fileInput.files.length) {
+            showToast("Vui lòng chọn file Excel!", "warning");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'preview_import');
+        formData.append('excel_file', fileInput.files[0]);
+
+        // Đổi chữ nút Tải lên thành Đang tải...
+        event.target.innerText = "Đang xử lý...";
+
+        fetch("{{ url_for('quanly_hocsinh') }}", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "error") {
+                showToast(data.message, "warning");
+                event.target.innerText = "Tải lên";
+                return;
+            }
+
+            // Đổ data lên Popup Preview
+            document.getElementById('pv_filename').innerText = data.filename;
+            document.getElementById('pv_total').innerText = data.total;
+            document.getElementById('pv_valid').innerText = data.valid_count;
+            document.getElementById('pv_valid_txt').innerText = data.valid_count;
+            document.getElementById('pv_error').innerText = data.error_count;
+
+            // Đổ bảng lỗi
+            const tbody = document.getElementById('pv_error_table');
+            tbody.innerHTML = '';
+            data.error_data.forEach(err => {
+                tbody.innerHTML += `
+                    <tr class="error-row">
+                        <td style="padding: 5px;">${err.row}</td>
+                        <td style="padding: 5px;">${err.name}</td>
+                        <td style="padding: 5px;">${err.error}</td>
+                    </tr>
+                `;
+            });
+
+            // Gán dữ liệu hợp lệ vào form ẩn để chuẩn bị submit thật
+            document.getElementById('hidden_valid_data').value = JSON.stringify(data.valid_data);
+
+            // Tắt popup Upload, Bật popup Xác nhận
+            closeModal('modal-upload-excel');
+            openModal('modal-preview-excel');
+            event.target.innerText = "Tải lên";
+        })
+        .catch(err => {
+            showToast("Có lỗi xảy ra khi đọc file!", "warning");
+            event.target.innerText = "Tải lên";
+        });
+    }
+    // ==========================================
+    // XUẤT EXCEL THEO BỘ LỌC
+    // ==========================================
+    function exportExcel() {
+        // Lấy giá trị từ các bộ lọc hiện tại trên web
+        const gradeId = document.getElementById('filter_grade_id').value;
+        const classId = document.getElementById('filter_class_id').value;
+        const searchName = document.querySelector('.search-wrapper input[name="search_name"]').value;
+
+        // Cấu hình URL xuất Excel
+        let url = "{{ url_for('export_hocsinh') }}?";
+        if (gradeId) url += `grade_id=${gradeId}&`;
+        if (classId) url += `class_id=${classId}&`;
+        if (searchName) url += `search_name=${encodeURIComponent(searchName)}`;
+
+        // Điều hướng trình duyệt sang link này để tải file
+        window.location.href = url;
+    }
+</script>
+{% endblock %}

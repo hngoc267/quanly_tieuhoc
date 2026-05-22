@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Quản lý năm học{% endblock %}
+
+{% block content %}
+<style>
+    .toast-msg {
+        position: fixed; bottom: 20px; right: 20px; padding: 15px 30px; border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-weight: bold; z-index: 9999;
+        transition: opacity 0.5s; display: flex; align-items: center; gap: 10px;
+    }
+    .toast-success { background-color: #e6f4ea !important; color: #159f46 !important; border: none !important; }
+    .toast-error { background-color: #ffebee !important; color: #d32f2f !important; border: none !important; }
+    .error-border { border: 2px solid #f44336 !important; background-color: #ffebee; }
+    .select-box { padding: 6px; width: 180px; border: 1px solid #ccc; border-radius: 4px; outline: none; transition: 0.3s; }
+</style>
+
+{% if success_msg %}<div id="toast-msg" class="toast-msg toast-success">✅ {{ success_msg }}</div>{% endif %}
+{% if error_msg %}<div id="toast-err" class="toast-msg toast-error">❌ {{ error_msg }}</div>{% endif %}
+
+<div style="flex: 1; background: #fff; display: flex; flex-direction: column;">
+    {% if selected_year and term1 and term2 %}
+    <form id="update-form" method="POST" action="{{ url_for('quanly_namhoc') }}" style="margin: 0; display: flex; flex-direction: column; height: 100%;">
+        <input type="hidden" name="year_id" value="{{ selected_year.year_id }}">
+        <input type="hidden" name="term1_id" value="{{ term1.semester_id }}">
+        <input type="hidden" name="term2_id" value="{{ term2.semester_id }}">
+        <div style="background: #1162a8; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #fff;">
+                    <span style="font-weight: bold; font-size: 16px; text-transform: uppercase;">NĂM HỌC: {{ selected_year.year_name }}</span>
+                    <span style="display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px;">
+                        {% if selected_year.is_current %}
+                            <span style="height: 12px; width: 12px; background-color: #8BC34A; border-radius: 50%; display: inline-block;"></span> Năm học hiện tại
+                        {% else %}
+                            <span style="height: 12px; width: 12px; background-color: #f44336; border-radius: 50%; display: inline-block;"></span> Đã khóa
+                        {% endif %}
+                    </span>
+                </div>
+
+        <table style="width: 100%; border-collapse: collapse; margin-top: 0; border: none;">
+            <thead>
+                <tr>
+                    <th style="background: #1162a8; color: white; padding: 12px; border: 1px solid #fff; border-right: 1px solid #ccc; width: 30%; text-align: center;">Học kỳ</th>
+                    <th colspan="2" style="background: #1162a8; color: white; padding: 12px; border: 1px solid #fff; text-align: center;">Thông tin kế hoạch</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="background: #ffffff;">
+                    <td rowspan="3" style="padding: 20px; border: 1px solid #ddd; font-weight: bold; text-align: center;">
+                        Học kỳ 1 (Tổng {{ term1_weeks|length }} tuần)<br>
+                        {% if not term1.is_current %}<span style="color: #d32f2f; font-size: 12px; font-weight: normal;">🔒 (Đã khóa)</span>{% endif %}
+                    </td>
+                    <td style="padding: 15px; border: 1px solid #ddd; font-weight: bold; width: 25%;">Thời gian học tập:</td>
+                    <td style="padding: 15px; border: 1px solid #ddd;">Từ <strong>{{ term1.start_vn }}</strong> đến <strong>{{ term1.end_vn }}</strong></td>
+                </tr>
+                <tr style="background: #ffffff;">
+                    <td style="padding: 15px; border: 1px solid #ddd; font-weight: bold;">Kiểm tra giữa kỳ 1:</td>
+                    <td style="padding: 15px; border: 1px solid #ddd;">
+                        <select name="term1_midterm" class="select-box" {% if not term1.is_current %}disabled style="background-color: #f5f5f5;"{% endif %}>
+                            <option value="">-- Chọn tuần --</option>
+                            {% for w in term1_weeks %}<option value="{{ w.week_num }}" data-txt="(Dự kiến từ {{ w.start_str }} - {{ w.end_str }})" {% if term1.midterm_start == w.week_num %}selected{% endif %}>Tuần {{ w.week_num }}</option>{% endfor %}
+                        </select>
+                        <br><span id="t1_mid_txt" style="font-size: 13px; color: #555; display: inline-block; margin-top: 5px;"></span>
+                    </td>
+                </tr>
+                <tr style="background: #ffffff;">
+                    <td style="padding: 15px; border: 1px solid #ddd; font-weight: bold;">Kiểm tra cuối kỳ 1:</td>
+                    <td style="padding: 15px; border: 1px solid #ddd;">
+                        <select name="term1_final" class="select-box" {% if not term1.is_current %}disabled style="background-color: #f5f5f5;"{% endif %}>
+                            <option value="">-- Chọn tuần --</option>
+                            {% for w in term1_weeks %}<option value="{{ w.week_num }}" data-txt="(Dự kiến từ {{ w.start_str }} - {{ w.end_str }})" {% if term1.final_start == w.week_num %}selected{% endif %}>Tuần {{ w.week_num }}</option>{% endfor %}
+                        </select>
+                        <br><span id="t1_fin_txt" style="font-size: 13px; color: #555; display: inline-block; margin-top: 5px;"></span>
+                    </td>
+                </tr>
+
+                <tr style="background: #f4f5f7;">
+                    <td rowspan="3" style="padding: 20px; border: 1px solid #ddd; font-weight: bold; text-align: center;">
+                        Học kỳ 2 (Tổng {{ term2_weeks|length }} tuần)<br>
+                        {% if not term2.is_current %}<span style="color: #d32f2f; font-size: 12px; font-weight: normal;">🔒 (Đã khóa)</span>{% endif %}
+                    </td>
+                    <td style="padding: 15px; border: 1px solid #ddd; font-weight: bold;">Thời gian học tập:</td>
+                    <td style="padding: 15px; border: 1px solid #ddd;">Từ <strong>{{ term2.start_vn }}</strong> đến <strong>{{ term2.end_vn }}</strong></td>
+                </tr>
+                <tr style="background: #f4f5f7;">
+                    <td style="padding: 15px; border: 1px solid #ddd; font-weight: bold;">Kiểm tra giữa kỳ 2:</td>
+                    <td style="padding: 15px; border: 1px solid #ddd;">
+                        <select name="term2_midterm" class="select-box" {% if not term2.is_current %}disabled style="background-color: #e9ecef;"{% endif %}>
+                            <option value="">-- Chọn tuần --</option>
+                            {% for w in term2_weeks %}<option value="{{ w.week_num }}" data-txt="(Dự kiến từ {{ w.start_str }} - {{ w.end_str }})" {% if term2.midterm_start == w.week_num %}selected{% endif %}>Tuần {{ w.week_num }}</option>{% endfor %}
+                        </select>
+                        <br><span id="t2_mid_txt" style="font-size: 13px; color: #555; display: inline-block; margin-top: 5px;"></span>
+                    </td>
+                </tr>
+                <tr style="background: #f4f5f7;">
+                    <td style="padding: 15px; border: 1px solid #ddd; font-weight: bold;">Kiểm tra cuối kỳ 2:</td>
+                    <td style="padding: 15px; border: 1px solid #ddd;">
+                        <select name="term2_final" class="select-box" {% if not term2.is_current %}disabled style="background-color: #e9ecef;"{% endif %}>
+                            <option value="">-- Chọn tuần --</option>
+                            {% for w in term2_weeks %}<option value="{{ w.week_num }}" data-txt="(Dự kiến từ {{ w.start_str }} - {{ w.end_str }})" {% if term2.final_start == w.week_num %}selected{% endif %}>Tuần {{ w.week_num }}</option>{% endfor %}
+                        </select>
+                        <br><span id="t2_fin_txt" style="font-size: 13px; color: #555; display: inline-block; margin-top: 5px;"></span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="text-align: right; padding: 15px 20px; background: #fff; border-top: 1px solid #ddd; margin-top: auto;">
+            {% if term1.is_current or term2.is_current %}
+                <button id="btn-submit-update" type="submit" style="background: #1565C0; color: white; border: none; padding: 10px 25px; border-radius: 4px; font-weight: bold; cursor: pointer;">Lưu cấu hình</button>
+                <div id="error-hint" style="color: red; font-size: 12px; margin-top: 5px; display: none;">Vui lòng khắc phục các lỗi bôi đỏ!</div>
+            {% else %}
+                <span style="color: #d32f2f; font-style: italic; font-weight: bold;">🔒 Tất cả học kỳ đã khóa, không thể chỉnh sửa.</span>
+            {% endif %}
+        </div>
+    </form>
+
+    {% elif selected_year %}
+    <div style="padding: 100px 20px; text-align: center;">
+        <h3 style="color: #d32f2f;">⚠️ Thiếu dữ liệu Học kỳ!</h3>
+        <p style="color: #666;">Vui lòng kiểm tra bảng <code>semesters</code> trong Database cho năm {{ selected_year.year_name }}.</p>
+    </div>
+    {% else %}
+    <div style="padding: 100px 20px; text-align: center; color: #999;">
+        Vui lòng chọn một năm học ở danh sách bên trái để thiết lập.
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Tắt popup sau 3.5s
+    ['toast-msg', 'toast-err'].forEach(id => {
+        let el = document.getElementById(id);
+        if (el) setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.style.display = 'none', 500); }, 3500);
+    });
+
+    // 2. Hàm đồng bộ & Validate thông minh
+    function setupSmartDropdowns(midName, finName, midTxtId, finTxtId) {
+        const midSel = document.querySelector(`select[name='${midName}']`);
+        const finSel = document.querySelector(`select[name='${finName}']`);
+        if (!midSel || !finSel) return;
+
+        function updateUI() {
+            let midVal = parseInt(midSel.value) || 0;
+            let finVal = parseInt(finSel.value) || 0;
+
+            // Xử lý text ngày dự kiến
+            let mOpt = midSel.options[midSel.selectedIndex];
+            document.getElementById(midTxtId).innerText = mOpt.value ? mOpt.getAttribute('data-txt') : "";
+            let fOpt = finSel.options[finSel.selectedIndex];
+            document.getElementById(finTxtId).innerText = fOpt.value ? fOpt.getAttribute('data-txt') : "";
+
+            // Khóa các option logic sai
+            Array.from(finSel.options).forEach(opt => {
+                if (opt.value && midVal && parseInt(opt.value) <= midVal) { opt.disabled = true; opt.style.color = '#ccc'; }
+                else { opt.disabled = false; opt.style.color = '#000'; }
+            });
+            Array.from(midSel.options).forEach(opt => {
+                if (opt.value && finVal && parseInt(opt.value) >= finVal) { opt.disabled = true; opt.style.color = '#ccc'; }
+                else { opt.disabled = false; opt.style.color = '#000'; }
+            });
+
+            // Nếu người dùng lỡ chọn sai (viền đỏ)
+            let isError = (midVal > 0 && finVal > 0 && midVal >= finVal);
+            midSel.classList.toggle('error-border', isError);
+            finSel.classList.toggle('error-border', isError);
+            return isError;
+        }
+
+        midSel.addEventListener('change', () => { updateUI(); checkGlobalForm(); });
+        finSel.addEventListener('change', () => { updateUI(); checkGlobalForm(); });
+        return updateUI; // Trả về hàm để gọi lần đầu
+    }
+
+    // 3. Quét toàn bộ form để vô hiệu hóa nút Cập nhật nếu có lỗi
+    function checkGlobalForm() {
+        let err1 = false, err2 = false;
+
+        let m1 = parseInt(document.querySelector("select[name='term1_midterm']")?.value);
+        let f1 = parseInt(document.querySelector("select[name='term1_final']")?.value);
+        if (m1 && f1 && m1 >= f1) err1 = true;
+
+        let m2 = parseInt(document.querySelector("select[name='term2_midterm']")?.value);
+        let f2 = parseInt(document.querySelector("select[name='term2_final']")?.value);
+        if (m2 && f2 && m2 >= f2) err2 = true;
+
+        let btn = document.getElementById('btn-submit-update');
+        let hint = document.getElementById('error-hint');
+
+        if (btn) {
+            if (err1 || err2) {
+                btn.disabled = true;
+                btn.style.background = '#ccc';
+                btn.style.cursor = 'not-allowed';
+                hint.style.display = 'block';
+            } else {
+                btn.disabled = false;
+                btn.style.background = '#1565C0';
+                btn.style.cursor = 'pointer';
+                hint.style.display = 'none';
+            }
+        }
+    }
+
+    // Khởi chạy
+    let init1 = setupSmartDropdowns('term1_midterm', 'term1_final', 't1_mid_txt', 't1_fin_txt');
+    let init2 = setupSmartDropdowns('term2_midterm', 'term2_final', 't2_mid_txt', 't2_fin_txt');
+    if(init1) init1();
+    if(init2) init2();
+    checkGlobalForm();
+});
+</script>
+{% endblock %}

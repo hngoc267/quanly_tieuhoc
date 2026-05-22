@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+.box {
+    background: #fff;
+    border: 1px solid #ccc;
+}
+
+.box-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f0f0f0;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.btn {
+    display: inline-block;
+    background: #1f78b4;
+    color: white !important;
+    padding: 6px 12px;
+    border-radius: 6px;
+    text-decoration: none !important;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.btn:hover { background: #16659c; }
+
+.filter {
+    padding: 10px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+table { width: 100%; border-collapse: collapse; }
+th { background: #1f5d8a; color: white; padding: 10px; border: 1px solid #ccc; }
+td { padding: 8px; border: 1px solid #ddd; }
+tr:nth-child(even) { background: #f9f9f9; }
+
+.success { color: green; font-weight: bold; }
+.error { color: red; font-weight: bold; }
+</style>
+
+<div class="box">
+    <!-- HEADER -->
+    <div class="box-header">
+        <div>📘 Phân công chuyên môn</div>
+        <div>
+            <a href="{{ url_for('import_pcm_page') }}" class="btn">Nhập PCCM từ Excel</a>
+            <a href="{{ url_for('pcm_by_class') }}" class="btn">Xem PCCM theo lớp</a>
+        </div>
+    </div>
+
+    <!-- FILTER -->
+    <div class="filter">
+        <label>Trạng thái:</label>
+        <select id="statusFilter" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc;">
+            <option value="">Chọn</option>
+            <option value="success">Thành công</option>
+            <option value="error">Thất bại</option>
+        </select>
+
+        <!-- 🔥 GIỮ NGUYÊN UI CỦA BẠN: Class .btn và Text "Bảng kết quả nhập liệu" -->
+        <a href="{{ url_for('export_import_result') }}" class="btn">
+            Bảng kết quả nhập liệu
+        </a>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>STT</th>
+                <th>Mã giáo viên</th>
+                <th>Họ & Tên</th>
+                <th>Môn dạy</th>
+                <th>Trạng thái</th>
+                <th>Trùng PCCM</th>
+            </tr>
+        </thead>
+        <tbody id="resultTable">
+            {% for r in results %}
+            <tr data-status="{{ r.status }}">
+                <td style="text-align: center;">{{ loop.index }}</td>
+                <td style="text-align: center;">{{ r.teacher_id }}</td>
+                <td>{{ r.teacher_name }}</td>
+                <td>{{ r.subject_name }}</td>
+                <td style="text-align: center;">
+                    {% if r.status == 'success' %}
+                        <span class="success">Thành công</span>
+                    {% else %}
+                        <span class="error">Thất bại</span>
+                    {% endif %}
+                </td>
+                <td style="font-size: 12px; color: #666;">
+                    {% if r.status == 'error' %}{{ r.message }}{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+document.getElementById("statusFilter").addEventListener("change", function() {
+    let value = this.value;
+    let rows = document.querySelectorAll("#resultTable tr");
+    rows.forEach(row => {
+        if (!value || row.dataset.status === value) { row.style.display = ""; }
+        else { row.style.display = "none"; }
+    });
+});
+</script>
+{% endblock %}

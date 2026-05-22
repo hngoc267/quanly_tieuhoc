@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block content %}
+{% if error_msg %}
+    <div style="color:red; margin-bottom:10px;">
+        {{ error_msg }}
+    </div>
+{% endif %}
+<style>
+.box {
+    background: #fff;
+    border: 1px solid #ccc;
+    margin-top: 15px;
+}
+
+/* HEADER */
+.box-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f0f0f0;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+    font-weight: bold;
+}
+
+/* BUTTON */
+.btn {
+    background: #1f78b4;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background: #16659c;
+}
+
+/* CONTENT */
+.box-content {
+    padding: 20px;
+}
+
+/* DOWNLOAD BUTTON */
+.btn-download {
+    display: inline-block;
+    margin-bottom: 15px;
+}
+
+/* LIST */
+.guide {
+    margin-left: 20px;
+    margin-bottom: 20px;
+}
+
+/* UPLOAD */
+.upload-box {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+</style>
+
+<div class="box">
+
+    <!-- HEADER -->
+    <div class="box-header">
+
+        <div>
+            📄 Nhập phân công chuyên môn từ File Excel
+        </div>
+
+        <div>
+            <button type="button" class="btn" onclick="toggleSubjects()">Danh mục môn học</button>
+        </div>
+
+    </div>
+
+    <!-- CONTENT -->
+    <div class="box-content">
+
+        <!-- DOWNLOAD -->
+        <a href="{{ url_for('download_template_pcm') }}" class="btn btn-download">
+            Tải file mẫu có dữ liệu
+        </a>
+
+        <!-- GUIDE -->
+        <ol class="guide">
+            <li>Hướng dẫn bật macro trên file excel mẫu (bắt buộc)</li>
+            <li>Các cột tiêu đề màu đỏ là bắt buộc</li>
+            <li>Không thay đổi, thêm, xóa các cột trong file mẫu</li>
+            <li>Không thay đổi định dạng file mẫu</li>
+        </ol>
+        <div id="subjectBox" style="margin-top:20px; display:none;">
+
+    <b>📚 Danh mục môn học theo khối:</b>
+
+    {% for grade in grades %}
+        <div style="margin-top:10px;">
+            <b>Khối {{ grade.grade_name }}:</b>
+
+            <ul>
+                {% for s in subject_map.get(grade.grade_id, []) %}
+                    <li>{{ s.subject_name }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endfor %}
+
+</div>
+
+        <!-- UPLOAD -->
+        <form action="{{ url_for('upload_pcm_excel') }}"
+              method="POST"
+              enctype="multipart/form-data">
+
+            <div class="upload-box">
+                <input type="file" name="file" required>
+                <button class="btn">Tải lên</button>
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+<script>
+function toggleSubjects() {
+    let box = document.getElementById("subjectBox");
+    box.style.display = box.style.display === "none" ? "block" : "none";
+}
+</script>
+{% endblock %}

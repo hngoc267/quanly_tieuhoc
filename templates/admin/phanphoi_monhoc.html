@@ -1,0 +1,527 @@
+{% extends "base.html" %}
+{% block title %}Phân phối môn học{% endblock %}
+
+{% block content %}
+<style>
+    body { color: #333; font-family: Arial, sans-serif; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 12px; margin-bottom: 15px; }
+    .page-title { margin: 0; color: #1565C0; font-size: 16px; font-weight: bold; display: flex; align-items: center; gap: 8px;}
+    .action-btn { background: #1565C0; color: white; border: none; padding: 7px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; margin-left: 10px; }
+    .action-btn:hover { background: #1152a3; }
+    .btn-secondary { background: #fff; color: #1565C0; border: 1px solid #1565C0; }
+
+    .note-section { font-size: 13px; margin-bottom: 20px; line-height: 1.6; color: #000; }
+    .note-section ul { margin: 5px 0; padding-left: 20px; }
+    .text-link { color: #1565C0; text-decoration: none; cursor: pointer; font-weight: bold; }
+
+    .filter-wrapper { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 13px; font-weight: bold;}
+    .filter-select { padding: 5px; width: 200px; border: 1px solid #ccc; }
+
+    .table-wrapper { background: #fff; border: 1px solid #ddd; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
+    th { background: #1162a8; color: white; padding: 12px 10px; font-weight: bold; border: 1px solid #ccc; }
+    td { padding: 10px; border: 1px solid #ccc; }
+    
+    .row-gray { background: #f4f5f7; }
+    .row-white { background: #ffffff; }
+
+    .icon-btn { cursor: pointer; font-size: 16px; color: #1565C0; border: none; background: transparent; padding: 0; }
+    
+    /* MODAL OVERLAY CHUNG */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 10000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* CSS THEO CHUẨN FIGMA */
+    .modal-box {
+        background: white;
+        border-radius: 4px;
+        width: 900px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        border: 1px solid #ccc;
+    }
+
+    .modal-header {
+        padding: 15px;
+        border-bottom: 1px solid #eee;
+        background: #fff;
+        text-align: center;
+        color: #1565C0;
+        font-weight: bold;
+        font-size: 18px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        text-transform: uppercase;
+    }
+
+    .modal-body { padding: 30px 40px; }
+
+    /* Layout 2 cột */
+    .popup-flex { display: flex; gap: 60px; }
+
+    /* Cột trái */
+    .popup-left { flex: 1; display: flex; flex-direction: column; gap: 15px; }
+    .popup-left .filter-row {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        align-items: center;
+        gap: 10px 15px;
+    }
+    .popup-left label {
+        font-weight: bold;
+        font-size: 13px;
+        color: #333;
+        display: block;
+        margin: 0;
+    }
+    .popup-left .label-red span {
+        color: red;
+    }
+    .popup-left .input-container {
+        width: 100%;
+    }
+    .popup-left .input-field,
+    .popup-left select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        box-sizing: border-box;
+        font-size: 13px;
+        transition: border-color 0.2s;
+    }
+    .popup-left select[readonly] {
+        background: #f5f5f5;
+    }
+    .input-error {
+        border-color: #d32f2f !important;
+        background-color: #ffebee !important;
+    }
+    .error-text {
+        color: #d32f2f;
+        font-size: 11px;
+        margin-top: 4px;
+        display: none;
+        font-weight: bold;
+    }
+    .required {
+        color: #d32f2f;
+        margin-left: 2px;
+    }
+    .disabled-input {
+        background: #f0f0f0;
+        color: #777;
+        cursor: not-allowed;
+    }
+
+    /* Cột phải */
+    .popup-right { flex: 1; }
+    .popup-right .section-title {
+        color: #1565C0;
+        font-weight: bold;
+        margin-bottom: 20px;
+        font-size: 15px;
+    }
+
+    /* Từng dòng Khối */
+    .grade-row-container { margin-bottom: 15px; }
+    .grade-row {
+        display: grid;
+        grid-template-columns: 24px minmax(120px, 160px) minmax(130px, 1fr);
+        align-items: center;
+        gap: 10px;
+    }
+    .grade-row label { font-weight: bold; font-size: 14px; }
+    .grade-row input[type="number"] {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 2px;
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 14px;
+    }
+
+    .empty-time {
+        grid-column: 3;
+        margin: 4px 0 0 0;
+        font-size: 12px;
+        color: #777;
+        font-style: italic;
+    }
+
+    /* Footer Buttons */
+    .modal-footer {
+        padding: 15px 40px;
+        background: #f9f9f9;
+        border-top: 1px solid #eee;
+        display: flex;
+        justify-content: flex-end;
+        gap: 15px;
+    }
+    .btn-cancel {
+        background: #fff;
+        color: #1565C0;
+        border: 1px solid #1565C0;
+        padding: 10px 30px;
+        border-radius: 4px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .btn-submit {
+        background: #0d6efd;
+        color: #fff;
+        border: none;
+        padding: 10px 30px;
+        border-radius: 4px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    /* Lưới form cho Popup cấu hình */
+    .form-grid { display: grid; grid-template-columns: 100px 1fr 120px 1fr; gap: 15px; align-items: center; margin-bottom: 15px;}
+    .form-grid label { font-weight: bold; font-size: 13px;}
+    .form-grid input { padding: 6px; border: 1px solid #ccc; background: #f9f9f9; width: 100%; box-sizing: border-box; color: #555;}
+</style>
+
+<div style="background: white; border: 1px solid #ddd; padding: 15px; min-height: 600px;">
+
+    <div class="toolbar">
+        <h4 class="page-title"><span style="font-size: 18px;">📚</span> Phân phối môn học</h4>
+        <div>
+            <button class="action-btn" onclick="openModal('modal-dongbo')">Lấy dữ liệu từ hệ thống</button>
+            <button class="action-btn" onclick="openModal('modal-tuchon')">Thêm môn tự chọn</button>
+        </div>
+    </div>
+
+    <div class="note-section">
+        <div class="note-content">
+            <strong>Hướng dẫn/ Ghi chú:</strong>
+            <ul>
+                <li>Kích [ Lấy dữ liệu từ hệ thống ] để đồng bộ danh mục môn học Bắt buộc theo khung CT GDPT 2018.</li>
+                <li>Kích [ Thêm môn tự chọn ] để khai báo các môn học đặc thù, tăng cường của cơ sở giáo dục.</li>
+                <li>Hình thức đánh giá được khóa mặc định theo Thông tư 27/2020/TT-BGDĐT.</li>
+                <li>Tổng thời lượng tiết học không quá xx đối với khối x. <a class="text-link" onclick="toggleNote(this)">[Đóng ghi chú]</a></li>
+            </ul>
+        </div>
+        <div class="note-reopen" style="display: none;">
+            <strong>Hướng dẫn/ Ghi chú:</strong> <a class="text-link" onclick="toggleNote(this)">[+] Xem hướng dẫn/ghi chú</a>
+        </div>
+    </div>
+
+    <!-- BỘ LỌC -->
+    <form id="filterForm" method="GET">
+        <div class="filter-wrapper">
+            <label>Khối:</label>
+            <select class="filter-select" name="grade_id" id="grade_id" onchange="document.getElementById('filterForm').submit();">
+                {% for g in grades %}
+                <option value="{{ g.grade_id }}" {% if g.grade_id|string == selected_grade_id|string %}selected{% endif %}>{{ g.grade_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+
+    <!-- BẢNG DỮ LIỆU -->
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:5%">STT</th>
+                    <th style="width:8%">Xem/ Sửa</th>
+                    <th style="width:25%">Tên môn học</th>
+                    <th>Phân loại</th>
+                    <th>Hình thức đánh giá</th>
+                    <th>Số tiết/ tuần</th>
+                    <th>Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in subjects %}
+                <tr class="{% if loop.index % 2 == 1 %}row-gray{% else %}row-white{% endif %}">
+                    <td>{{ loop.index }}</td>
+                    <td>
+                        {% if s.type == 'Bắt buộc' %}
+                            <button type="button" class="icon-btn" onclick="openConfigModal('{{ s.subject_name }}', '{{ s.type }}', '{{ s.evaluation_type }}', '{{ s.periods_per_week }}', '{{ s.status }}')">&#128065;</button>
+                        {% else %}
+                            <button type="button" class="icon-btn">&#9998;</button>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:left; font-weight:bold;">{{ s.subject_name }}</td>
+                    <td>{{ s.type }}</td>
+                    <td>{{ s.evaluation_type }}</td>
+                    <td>{{ s.periods_per_week }}</td>
+                    <td>{{ s.status }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" style="color:gray; padding:30px;">Chưa có dữ liệu môn học. Vui lòng nhấn "Lấy dữ liệu từ hệ thống"</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 1. POPUP XÁC NHẬN ĐỒNG BỘ -->
+<div id="modal-dongbo" class="modal-overlay">
+    <div class="modal-box" style="width: 600px;">
+        <div class="modal-header">XÁC NHẬN LẤY DỮ LIỆU TỪ HỆ THỐNG</div>
+        <div class="modal-body">
+            <p style="font-weight: bold;">Hệ thống sẽ tiến hành tải và đồng bộ [ Danh mục môn học chuẩn ] từ máy chủ của Sở GD&ĐT xuống cơ sở dữ liệu của nhà trường.</p>
+            <p class="text-red" style="margin-top: 15px; margin-bottom: 5px;">Nguyên tắc bảo toàn dữ liệu:</p>
+            <ul>
+                <li>Thao tác này <strong>KHÔNG</strong> xóa hoặc ghi đè các môn học Tự chọn / Ngoại khóa do cơ sở giáo dục tự khởi tạo.</li>
+                <li>Thao tác này <strong>KHÔNG</strong> làm thay đổi dữ liệu điểm số hiện hành hoặc danh sách phân công chuyên môn của giáo viên.</li>
+            </ul>
+            <p style="font-style: italic; font-weight: bold; margin-top: 20px;">Xác nhận thực hiện tiến trình đồng bộ?</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="closeModal('modal-dongbo')">Về lại/ Huỷ bỏ</button>
+            <form method="POST" action="{{ url_for('phanphoi_monhoc', grade_id=selected_grade_id) }}" style="display: inline;">
+                <input type="hidden" name="action" value="sync_subjects">
+                <button type="submit" class="btn-submit">ĐỒNG Ý XÁC NHẬN</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 2. POPUP XEM CẤU HÌNH MÔN BẮT BUỘC -->
+<div id="modal-cauhinh" class="modal-overlay">
+    <div class="modal-box" style="width: 700px;">
+        <div class="modal-header">CẤU HÌNH MÔN BẮT BUỘC</div>
+        <div class="modal-body">
+            <div class="form-grid">
+                <label>Tên môn học [1]:</label> <input type="text" id="view_subject_name" readonly>
+                <label>Hình thức đánh giá [4]:</label> <input type="text" id="view_eval_type" readonly>
+
+                <label>Áp dụng cho [2]:</label> <input type="text" id="view_grade" readonly>
+                <label>Số tiết/ tuần [5]:</label> <input type="text" id="view_periods" readonly>
+
+                <label>Phân loại [3]:</label> <input type="text" id="view_type" readonly>
+                <label>Trạng thái [6]:</label> <input type="text" id="view_status" readonly>
+            </div>
+            <p class="text-red" style="font-style: italic; font-size: 13px; margin-top: 15px;">Ghi chú: Đây là môn học thuộc khung chương trình chuẩn 2018. Thông số đã được khóa tự động.</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-submit" onclick="closeModal('modal-cauhinh')">Đóng</button>
+        </div>
+    </div>
+</div>
+
+<!-- 3. POPUP THÊM MÔN TỰ CHỌN (FIGMA CHUẨN) -->
+<div id="modal-tuchon" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <span>➕</span> THÊM MÔN TỰ CHỌN
+        </div>
+
+        <form method="POST" onsubmit="return validateForm()">
+            <input type="hidden" name="action" value="add_custom_subject">
+
+            <div class="modal-body">
+                <div class="popup-flex">
+                    <div class="popup-left">
+                            <div class="filter-row">
+                            <label class="label-red">Tên môn học <span>[1]</span>:</label>
+                            <div class="input-container">
+                                <input type="text" name="subject_name" class="input-field req-field" placeholder="Nhập tên môn học" required>
+                                <div class="error-text">Trường này không được để trống.</div>
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label>Phân loại <span>[2]</span>:</label>
+                            <div class="input-container">
+                                <input type="text" value="Tự chọn" readonly class="input-field" style="background: #f5f5f5;">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="label-red">Đánh giá <span>[3]</span>:</label>
+                            <div class="input-container">
+                                <select name="evaluation_type" class="input-field req-field" required>
+                                    <option value="">-- Chọn hình thức --</option>
+                                    <option value="Chấm điểm">Chấm điểm</option>
+                                    <option value="Đánh giá">Đánh giá</option>
+                                </select>
+                                <div class="error-text">Vui lòng chọn một hình thức đánh giá.</div>
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="label-red">Trạng thái <span>[4]</span>:</label>
+                            <div class="input-container">
+                                <select name="status" class="input-field req-field" required>
+                                    <option value="">-- Chọn trạng thái --</option>
+                                    <option value="Đang áp dụng">Đang áp dụng</option>
+                                    <option value="Tạm ngưng">Tạm ngưng</option>
+                                </select>
+                                <div class="error-text">Vui lòng chọn trạng thái.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="popup-right">
+                        <div class="section-title">Thông tin phân bổ thời lượng theo khối</div>
+
+                        {% for g in grades %}
+                        {% set rem = grade_remaining_slots[g.grade_id] %}
+                        <div class="grade-row-container">
+                            <div class="grade-row">
+                                <input type="checkbox" name="selected_grades" value="{{ g.grade_id }}" id="chk_{{ g.grade_id }}">
+                                <label for="chk_{{ g.grade_id }}">{{ g.grade_name }}</label>
+                                <input type="number"
+                                       name="periods_grade_{{ g.grade_id }}"
+                                       id="input_{{ g.grade_id }}"
+                                       min="1"
+                                       max="{{ rem }}"
+                                       placeholder="Nhập số tiết"
+                                       disabled
+                                       class="disabled-input"
+                                       oninput="checkLimit(this, {{ rem }})">
+                            </div>
+                            <span class="empty-time" id="hint_{{ g.grade_id }}">(Quỹ thời gian còn trống: {{ rem }} tiết)</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('modal-tuchon')">Về lại/ Huỷ bỏ</button>
+                <button type="submit" class="btn-submit">CẬP NHẬT/ THÊM</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function toggleGradeInput(checkbox) {
+        const gradeId = checkbox.value;
+        const input = document.getElementById('input_' + gradeId);
+        if (!input) return;
+
+        if (checkbox.checked) {
+            input.disabled = false;
+            input.classList.remove('disabled-input');
+            input.style.background = '#fff';
+        } else {
+            input.disabled = true;
+            input.value = '';
+            input.classList.add('disabled-input');
+            input.style.background = '#f0f0f0';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.grade-row input[type="checkbox"]').forEach(function(chk) {
+            toggleGradeInput(chk);
+            chk.addEventListener('change', function() {
+                toggleGradeInput(chk);
+            });
+        });
+
+        const reqFields = document.querySelectorAll('#modal-tuchon .req-field');
+        reqFields.forEach(el => {
+            el.addEventListener('input', function() {
+                if (!this.value.trim()) showError(this);
+                else clearError(this);
+            });
+            el.addEventListener('blur', function() {
+                if (!this.value.trim()) showError(this);
+            });
+        });
+    });
+
+    function showError(el, customMsg = null) {
+        el.classList.add('input-error');
+        const errText = el.nextElementSibling;
+        if (errText && errText.classList.contains('error-text')) {
+            if (customMsg) errText.innerText = customMsg;
+            errText.style.display = 'block';
+        }
+    }
+
+    function clearError(el) {
+        el.classList.remove('input-error');
+        const errText = el.nextElementSibling;
+        if (errText && errText.classList.contains('error-text')) {
+            errText.style.display = 'none';
+        }
+    }
+
+    function clearAllErrors() {
+        document.querySelectorAll('#modal-tuchon .req-field').forEach(el => clearError(el));
+    }
+
+    // HÀM KIỂM SOÁT SỐ TIẾT (NGĂN SỐ ÂM VÀ VƯỢT QUỸ)[cite: 2]
+    function checkLimit(input, maxVal) {
+        if (input.value !== "" && parseInt(input.value) < 1) {
+            input.value = 1;
+            alert("Số tiết tối thiểu là 1 tiết.");
+        }
+        if (parseInt(input.value) > maxVal) {
+            input.value = maxVal;
+            alert("Vượt quá quỹ thời gian còn trống của khối (" + maxVal + " tiết).");
+        }
+    }
+
+    // HÀM KIỂM TRA TRƯỚC KHI GỬI FORM[cite: 2]
+    function validateForm() {
+        let isValid = true;
+        clearAllErrors();
+
+        document.querySelectorAll('#modal-tuchon .req-field').forEach(el => {
+            if (!el.value.trim()) {
+                showError(el);
+                isValid = false;
+            }
+        });
+
+        let selectedGrades = document.querySelectorAll('input[name="selected_grades"]:checked');
+        if (selectedGrades.length === 0) {
+            alert("Vui lòng chọn ít nhất một khối để áp dụng môn học.");
+            isValid = false;
+        }
+
+        for (let chk of selectedGrades) {
+            let gradeId = chk.value;
+            let periodInput = document.getElementById('input_' + gradeId);
+            if (!periodInput.value || parseInt(periodInput.value) < 1) {
+                showError(periodInput, "Vui lòng nhập số tiết cho khối này.");
+                isValid = false;
+            }
+        }
+
+        if (!isValid) {
+            return false;
+        }
+        return true;
+    }
+
+    function openConfigModal(name, type, evalType, periods, status) {
+        document.getElementById('view_subject_name').value = name;
+        document.getElementById('view_type').value = type;
+        document.getElementById('view_eval_type').value = evalType;
+        document.getElementById('view_periods').value = periods;
+        document.getElementById('view_status').value = status;
+        let gradeSelect = document.getElementById('grade_id');
+        document.getElementById('view_grade').value = gradeSelect.options[gradeSelect.selectedIndex].text;
+        openModal('modal-cauhinh');
+    }
+
+    function toggleNote(el) {
+        let section = el.closest('.note-section');
+        let content = section.querySelector('.note-content');
+        let reopen = section.querySelector('.note-reopen');
+        if (content.style.display !== 'none') { content.style.display = 'none'; reopen.style.display = 'block'; }
+        else { content.style.display = 'block'; reopen.style.display = 'none'; }
+    }
+</script>
+{% endblock %}

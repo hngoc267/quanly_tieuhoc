@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+{% block title %}Danh sách khối & lớp{% endblock %}
+
+{% block content %}
+<style>
+    /* TOAST NOTIFICATIONS */
+    .toast-msg {
+        position: fixed; bottom: 20px; right: 20px; padding: 15px 30px; border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-weight: bold; z-index: 9999;
+        transition: opacity 0.5s; display: none; align-items: center; gap: 10px;
+    }
+    .toast-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .toast-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .toast-warning { background: #f3f4d8; color: #6b6b21; border: 1px solid #e1e4b5; }
+
+    /* ACTION BUTTONS */
+    .action-btn {
+        background: #1565C0; color: white; border: none; padding: 8px 15px; border-radius: 4px;
+        font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; font-size: 13px; transition: 0.2s;
+    }
+    .action-btn:hover { background: #1152a3; }
+
+    /* MODAL CHUNG */
+    .modal-overlay {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.4); z-index: 10000; justify-content: center; align-items: center;
+    }
+    .modal-box { background: white; border-radius: 4px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); overflow: hidden; }
+    .modal-header { padding: 12px 20px; border-bottom: 1px solid #ddd; font-weight: bold; color: #1565C0; background: #fff; display: flex; align-items: center; gap: 10px;}
+    .modal-body { padding: 20px; font-size: 14px; }
+    .modal-footer { padding: 15px 20px; border-top: 1px solid #ddd; background: #fff; display: flex; justify-content: flex-end; gap: 10px; }
+
+    .modal-input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; outline: none; }
+    .modal-input:disabled { background: #f5f5f5; color: #888; }
+
+    .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .form-group { display: flex; align-items: center; margin-bottom: 15px; }
+    .form-group label { width: 120px; font-weight: bold; }
+    .form-group .input-wrapper { flex: 1; }
+</style>
+
+<!-- TOAST CONTAINERS -->
+{% if success_msg %}<div id="toast-server-success" class="toast-msg toast-success" style="display: flex;">✅ {{ success_msg }}</div>{% endif %}
+{% if error_msg %}<div id="toast-server-error" class="toast-msg toast-error" style="display: flex;">❌ {{ error_msg }}</div>{% endif %}
+<div id="toast-warning" class="toast-msg toast-warning">⚠️ Vui lòng tick chọn ít nhất một lớp trong danh sách</div>
+<div id="toast-success-js" class="toast-msg toast-success">✅ Đã xoá thành công!</div>
+
+<div style="background: white; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); min-height: 600px; position: relative; z-index: 1;">
+
+    <!-- THANH TIÊU ĐỀ & NÚT HÀNH ĐỘNG -->
+    <div style="padding: 15px 20px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; background: #fff;">
+        <h4 style="margin: 0; color: #1565C0; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 18px;">👤</span> Danh sách khối & lớp (Năm học: {{ current_year_name }})
+        </h4>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="openAddEditModal()" class="action-btn">Thêm lớp</button>
+            <button onclick="checkAndDelete()" class="action-btn" style="background: #1976D2;">Xóa</button>
+            <a href="{{ url_for('tai_mau_khoilop') }}" class="action-btn" style="background: #1976D2;">Tải mẫu Excel</a>
+            <button onclick="openImportModal()" class="action-btn" style="background: #1976D2;">Nhập từ Excel</button>
+        </div>
+    </div>
+
+    <div style="padding: 20px;">
+
+        <!-- KHU VỰC GHI CHÚ -->
+        <div style="margin-bottom: 25px;">
+            <strong style="font-size: 14px; color: #000;">Hướng dẫn/ Ghi chú:</strong>
+
+            <div id="note-content" style="margin-top: 5px; font-size: 14px; color: #333; display: block;">
+                <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                    <li>Danh mục Khối (từ Khối 1 đến Khối 5) được hệ thống khởi tạo mặc định, nhà trường không cần tự tạo.</li>
+                    <li>Để tạo lớp mới, vui lòng kích nút [ Thêm mới ] hoặc sử dụng tính năng [ Nhập từ Excel ] để thêm hàng loạt.</li>
+                    <li>Không thể xóa các Lớp đã có học sinh hoặc đã được phân công Giáo viên chủ nhiệm (nút Xóa sẽ bị ẩn).</li>
+                    <li>Vui lòng chuyển hết học sinh sang lớp khác trước khi xóa lớp.
+                        <a href="javascript:void(0)" onclick="toggleNote()" style="color: #1976D2; text-decoration: none; margin-left: 5px;">[Đóng ghi chú]</a>
+                    </li>
+                </ul>
+            </div>
+
+            <div id="reopen-note" style="margin-top: 5px; font-size: 13px; display: none;">
+                <a href="javascript:void(0)" onclick="toggleNote()" style="color: #1976D2; text-decoration: none; font-style: italic;">
+                    [+] Xem hướng dẫn/ghi chú
+                </a>
+            </div>
+        </div>
+
+        <!-- BỘ LỌC TÌM KIẾM -->
+        <form method="GET" style="margin-bottom: 20px; font-size: 14px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: center;">
+                <strong style="width: 50px;">Khối:</strong>
+                <select name="grade_filter" onchange="this.form.submit()" style="padding: 5px; width: 220px; border: 1px solid #ccc; border-radius: 2px; outline: none;">
+                    <option value="" style="color: #999;">Chọn</option>
+                    {% for g in grades %}
+                        <option value="{{ g.grade_id }}" {% if g.grade_id | string == selected_grade | string %}selected{% endif %} style="color: #000;">{{ g.grade_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+
+        <!-- BẢNG DỮ LIỆU -->
+        <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; border: 1px solid #ddd;">
+            <thead>
+                <tr style="background: #1162a8; color: white;">
+                    <th style="padding: 12px; border: 1px solid #1565C0; width: 5%;">STT</th>
+                    <th style="padding: 12px; border: 1px solid #1565C0; width: 5%;"><input type="checkbox" id="checkAll"></th>
+                    <th style="padding: 12px; border: 1px solid #1565C0; width: 8%;">Sửa</th>
+                    <th style="padding: 12px; border: 1px solid #1565C0; width: 15%;">Khối</th>
+                    <th style="padding: 12px; border: 1px solid #1565C0; width: 17%;">Tên lớp</th>
+                    <th style="padding: 12px; border: 1px solid #1565C0; width: 10%;">Sĩ số</th>
+                    <th style="padding: 12px; border: 1px solid #1565C0; width: 25%;">GVCN</th>
+                    <th style="padding: 12px; border: 1px solid #1565C0; width: 15%;">Phòng học</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in classes %}
+                <tr style="background: {{ loop.cycle('#ffffff', '#f4f5f7') }};">
+                    <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">{{ loop.index }}</td>
+
+                    <!-- LOGIC KHÓA CHECKBOX -->
+                    <td style="padding: 12px; border: 1px solid #ddd;">
+                        {% if c.student_count > 0 or c.homeroom_teacher %}
+                            <input type="checkbox" disabled title="Lớp đã có học sinh hoặc GVCN" style="cursor: not-allowed; opacity: 0.4;">
+                        {% else %}
+                            <input type="checkbox" class="chk-item" value="{{ c.class_id }}">
+                        {% endif %}
+                    </td>
+
+                    <!-- NÚT SỬA -->
+                    <td style="padding: 12px; border: 1px solid #ddd; color: #1565C0; cursor: pointer; font-size: 16px;" onclick="openAddEditModal('{{ c.grade_id }}', '{{ c.class_name }}', '{{ c.room or '' }}', '{{ c.homeroom_teacher or '' }}', '{{ c.class_id }}')">✎</td>
+                    <td style="padding: 12px; border: 1px solid #ddd;">{{ c.grade_name }}</td>
+                    <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">{{ c.class_name }}</td>
+                    <td style="padding: 12px; border: 1px solid #ddd;">{{ c.student_count }}</td>
+                    <td style="padding: 12px; border: 1px solid #ddd; text-align: left;">{{ c.homeroom_teacher or '' }}</td>
+                    <td style="padding: 12px; border: 1px solid #ddd;">{{ c.room or '' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" style="padding: 20px; color: gray;">Chưa có dữ liệu lớp học.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!-- POPUP THÊM MỚI / CHỈNH SỬA                     -->
+<!-- ============================================== -->
+<div id="addEditModal" class="modal-overlay">
+    <div class="modal-box" style="width: 750px;">
+        <div class="modal-header">
+            <span style="font-size: 18px;">📝</span> Quản lý khối lớp
+        </div>
+        <form method="POST" action="{{ url_for('danhsach_khoilop') }}">
+            <input type="hidden" name="action" id="modal_action" value="add">
+            <input type="hidden" name="class_id" id="modal_class_id" value="">
+
+            <div class="modal-body grid-2col">
+                <!-- Cột trái -->
+                <div>
+                    <div class="form-group">
+                        <label>Khối <span style="color:red">[1]</span>:</label>
+                        <div class="input-wrapper">
+                            <select name="grade_id" id="modal_grade_id" class="modal-input" required>
+                                <option value="">Chọn</option>
+                                {% for g in grades %}<option value="{{ g.grade_id }}">{{ g.grade_name }}</option>{% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Lớp <span style="color:red">[2]</span>:</label>
+                        <div class="input-wrapper">
+                            <input type="text" name="class_name" id="modal_class_name" class="modal-input" required placeholder="VD: 1A, 2B...">
+                            <div id="class_name_error" style="color: red; font-size: 12px; margin-top: 5px; display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Cột phải -->
+                <div>
+                    <div class="form-group" style="align-items: flex-start;">
+                        <label>GVCN <span style="color:red">[3]</span>:</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="modal_teacher" class="modal-input" disabled>
+                            <div style="font-size: 12px; color: #555; margin-top: 5px;">(Dữ liệu lấy từ phân hệ Quản lý nhân sự)</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Phòng học <span style="color:red">[4]</span>:</label>
+                        <div class="input-wrapper">
+                            <select name="room" id="modal_room" class="modal-input">
+                                <option value="">Chọn</option>
+                                <option value="Phòng 101">Phòng 101</option>
+                                <option value="Phòng 102">Phòng 102</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="action-btn" style="background: #fff; color: #1565C0; border: 1px solid #1565C0;" onclick="closeModal('addEditModal')">Huỷ</button>
+                <button type="submit" id="btn_submit_modal" class="action-btn">Tạo mới/ Cập nhật</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!-- POPUP XÁC NHẬN XOÁ                             -->
+<!-- ============================================== -->
+<div id="deleteModal" class="modal-overlay">
+    <div class="modal-box" style="width: 550px;">
+        <div class="modal-header" style="justify-content: center; font-size: 16px;">
+            XÁC NHẬN XOÁ
+        </div>
+        <div class="modal-body" style="padding: 25px;">
+            <p style="margin-top: 0;">Bạn đang yêu cầu xóa <strong id="del-count">xx</strong> lớp khỏi danh sách.</p>
+            <p style="color: red; font-weight: bold; margin-bottom: 5px;">Lưu ý:</p>
+            <ul style="margin-top: 0; padding-left: 20px; line-height: 1.5;">
+                <li>Thao tác này sẽ xóa vĩnh viễn hồ sơ và toàn bộ dữ liệu này khỏi hệ thống. Thao tác này <span style="color: red; font-style: italic; font-weight: bold;">KHÔNG THỂ</span> khôi phục.</li>
+            </ul>
+            <p style="font-style: italic; font-weight: bold; margin-top: 20px;">Bạn có chắc chắn muốn thực hiện ?</p>
+        </div>
+        <div class="modal-footer" style="justify-content: center; gap: 20px;">
+            <button type="button" class="action-btn" onclick="closeModal('deleteModal')">Về lại/ Huỷ bỏ</button>
+            <button type="button" class="action-btn" onclick="confirmDelete()">ĐỒNG Ý XOÁ</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!-- POPUP 1: CHỌN FILE EXCEL                       -->
+<!-- ============================================== -->
+<div id="importModal" class="modal-overlay">
+    <div class="modal-box" style="width: 600px;">
+        <div class="modal-header"> <span style="font-size: 18px;">📄</span> Danh sách khối lớp từ file Excel </div>
+
+        <!-- Sửa lại Form: Không dùng action submit truyền thống nữa, giao cho JS xử lý -->
+        <form id="uploadExcelForm" onsubmit="event.preventDefault(); processExcelPreview();" enctype="multipart/form-data">
+            <div class="modal-body">
+                <a href="{{ url_for('tai_mau_khoilop') }}" class="action-btn" style="margin-bottom: 15px; text-decoration: none; display: inline-block;">⬇️ Tải file mẫu có dữ liệu</a>
+                <div style="padding-left: 20px; line-height: 1.8; margin-bottom: 20px; font-size: 14px;">
+                    1. File Excel phải có 2 cột bắt buộc là: <strong>Khối (*)</strong> và <strong>Tên lớp (*)</strong>.<br>
+                    2. Tên Khối phải nhập chính xác (Ví dụ: <strong>Khối 1</strong>, <strong>Khối 2</strong>...).<br>
+                    3. Hệ thống sẽ kiểm tra và lọc các dòng lỗi trước khi nhập.
+                </div>
+                <input type="file" name="excel_file" id="excel_file_input" accept=".xlsx, .xls" required style="border: 1px solid #aaa; padding: 5px; width: 100%; box-sizing: border-box;">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="action-btn" style="background: #fff; color: #1565C0; border: 1px solid #1565C0;" onclick="closeModal('importModal')">Huỷ bỏ</button>
+                <button type="submit" id="btn_upload_excel" class="action-btn" style="background: #1976D2;">Kiểm tra dữ liệu</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!-- POPUP 2: XÁC NHẬN NHẬP DỮ LIỆU                 -->
+<!-- ============================================== -->
+<div id="confirmImportModal" class="modal-overlay">
+    <div class="modal-box" style="width: 700px; border-radius: 0;">
+        <div class="modal-header" style="justify-content: center; font-size: 16px; color: #1565C0; text-transform: uppercase; border-bottom: 1px solid #ccc; padding: 15px;">
+            Xác nhận nhập dữ liệu
+        </div>
+        <div class="modal-body" style="padding: 20px 30px; font-size: 14px;">
+            <div style="margin-bottom: 15px; line-height: 1.8;">
+                <strong>Tên file:</strong> <span id="conf_filename">---</span><br>
+                <strong>Tổng số dòng đọc được:</strong> <strong id="conf_total_rows">0</strong>
+            </div>
+            <div style="margin-bottom: 20px; line-height: 1.8;">
+                <strong>Hợp lệ:</strong> <span id="conf_valid_rows" style="color: green; font-weight: bold;">0</span> dòng<br>
+                <strong>Báo lỗi:</strong> <span id="conf_error_rows" style="color: red; font-weight: bold;">0</span> dòng
+            </div>
+
+            <strong style="color: red; display: block; margin-bottom: 10px;">Chi tiết các dòng lỗi</strong>
+            <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; margin-bottom: 20px;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                    <thead style="background: #1162a8; color: white; position: sticky; top: 0;">
+                        <tr>
+                            <th style="padding: 10px; border: 1px solid #ddd; width: 10%; text-align: center;">Dòng</th>
+                            <th style="padding: 10px; border: 1px solid #ddd; width: 30%;">Tên Lớp</th>
+                            <th style="padding: 10px; border: 1px solid #ddd; width: 60%;">Chi tiết lỗi</th>
+                        </tr>
+                    </thead>
+                    <!-- JS sẽ nhét bảng lỗi vào đây -->
+                    <tbody id="conf_error_table_body"></tbody>
+                </table>
+            </div>
+
+            <div style="font-style: italic; font-weight: bold; font-size: 13px; line-height: 1.5;">
+                Hệ thống sẽ bỏ qua các dòng lỗi và chỉ nhập <span id="conf_valid_text" style="color: green;">0</span> dòng hợp lệ.<br>
+                Bạn có muốn tiếp tục?
+            </div>
+        </div>
+
+        <div class="modal-footer" style="justify-content: flex-end; gap: 10px; padding: 15px 30px; background: #fff;">
+            <button type="button" class="action-btn" style="background: #1565C0; padding: 10px 20px;" onclick="closeModal('confirmImportModal'); openImportModal();">Về lại/ Huỷ bỏ</button>
+            <button type="button" class="action-btn" style="background: #1162a8; padding: 10px 30px;" onclick="document.getElementById('finalImportForm').submit();">Tiếp tục</button>
+        </div>
+    </div>
+</div>
+
+<!-- FORM ẨN ĐỂ LƯU DATA LÊN DATABASE (BƯỚC CUỐI) -->
+<form id="finalImportForm" method="POST" action="{{ url_for('danhsach_khoilop') }}" style="display:none;">
+    <input type="hidden" name="action" value="confirm_import">
+    <input type="hidden" name="valid_data" id="hidden_valid_data" value="">
+</form>
+<!-- ============================================== -->
+<!-- FORM ẨN ĐỂ GỬI LỆNH XÓA LÊN SERVER             -->
+<!-- ============================================== -->
+<form id="deleteForm" method="POST" action="{{ url_for('danhsach_khoilop') }}" style="display:none;">
+    <input type="hidden" name="action" value="delete">
+    <input type="hidden" name="class_ids" id="hidden_class_ids" value="">
+</form>
+
+<!-- ============================================== -->
+<!-- JAVASCRIPT ĐIỀU KHIỂN                          -->
+<!-- ============================================== -->
+<script>
+    // 1. Hàm hiển thị Toast Notification
+    function showToast(id) {
+        let el = document.getElementById(id);
+        if (el) {
+            el.style.display = 'flex'; el.style.opacity = '1';
+            setTimeout(() => {
+                el.style.opacity = '0';
+                setTimeout(() => { el.style.display = 'none'; }, 500);
+            }, 3500);
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        if(document.getElementById('toast-server-success')) showToast('toast-server-success');
+        if(document.getElementById('toast-server-error')) showToast('toast-server-error');
+    });
+
+    // 2. Logic Đóng/Mở Ghi chú
+    function toggleNote() {
+        var content = document.getElementById('note-content');
+        var reopenBtn = document.getElementById('reopen-note');
+
+        if (content.style.display !== 'none') {
+            content.style.display = 'none'; reopenBtn.style.display = 'block';
+        } else {
+            content.style.display = 'block'; reopenBtn.style.display = 'none';
+        }
+    }
+
+    // 3. Hàm Đóng Modal Chung
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+
+    // 4. Hàm Mở Modal Thêm/Sửa & Đổ dữ liệu
+    function openAddEditModal(grade_id = '', class_name = '', room = '', teacher = '', class_id = '') {
+        document.getElementById('addEditModal').style.display = 'flex';
+
+        document.getElementById('modal_grade_id').value = grade_id;
+        document.getElementById('modal_class_name').value = class_name;
+        document.getElementById('modal_room').value = room;
+        document.getElementById('modal_teacher').value = teacher;
+        document.getElementById('modal_class_id').value = class_id;
+
+        if (class_id) {
+            document.getElementById('modal_action').value = 'edit';
+        } else {
+            document.getElementById('modal_action').value = 'add';
+        }
+
+        // Gọi hàm validate ngay khi mở popup để kiểm tra logic
+        validateClassNameUX();
+    }
+
+    // 5. Hàm Mở Modal Nhập Excel
+    function openImportModal() {
+        document.getElementById('importModal').style.display = 'flex';
+    }
+
+    // 6. Logic nút XÓA
+    function checkAndDelete() {
+        let checkedBoxes = document.querySelectorAll('.chk-item:checked');
+        if (checkedBoxes.length === 0) {
+            showToast('toast-warning');
+        } else {
+            document.getElementById('del-count').innerText = checkedBoxes.length;
+            document.getElementById('deleteModal').style.display = 'flex';
+        }
+    }
+
+    // Xác nhận Xóa thực sự (Đã gắn Backend)
+    function confirmDelete() {
+        // Lấy tất cả các ô checkbox đang được tick
+        let checkedBoxes = document.querySelectorAll('.chk-item:checked');
+
+        // Rút trích lấy giá trị class_id của tụi nó
+        let ids = Array.from(checkedBoxes).map(chk => chk.value);
+
+        // Nhét chuỗi ID đó vào Form ẩn và Gửi lên Server
+        document.getElementById('hidden_class_ids').value = ids.join(',');
+        document.getElementById('deleteForm').submit();
+
+        closeModal('deleteModal');
+    }
+
+    // 7. Logic Check All
+    document.getElementById('checkAll').addEventListener('change', function() {
+        let checkboxes = document.querySelectorAll('.chk-item');
+        checkboxes.forEach(chk => {
+            if (!chk.disabled) chk.checked = this.checked;
+        });
+    });
+
+    // 8. Tối ưu UX: Validate Tên Lớp khớp với Khối
+    function validateClassNameUX() {
+        const gradeSelect = document.getElementById('modal_grade_id');
+        const classInput = document.getElementById('modal_class_name');
+        const errorMsg = document.getElementById('class_name_error');
+        const submitBtn = document.getElementById('btn_submit_modal');
+
+        if (gradeSelect.selectedIndex <= 0 || classInput.value.trim() === '') {
+            errorMsg.style.display = 'none'; classInput.style.borderColor = '#ccc';
+            submitBtn.disabled = false; submitBtn.style.opacity = '1'; submitBtn.style.cursor = 'pointer';
+            return;
+        }
+
+        const selectedText = gradeSelect.options[gradeSelect.selectedIndex].text;
+        const gradeNumber = selectedText.replace(/\D/g, '');
+        const classPrefix = classInput.value.trim().charAt(0);
+
+        if (gradeNumber && classPrefix !== gradeNumber) {
+            errorMsg.innerText = `Tên lớp phải bắt đầu bằng số ${gradeNumber} (VD: ${gradeNumber}A, ${gradeNumber}B...)`;
+            errorMsg.style.display = 'block'; classInput.style.borderColor = 'red';
+            submitBtn.disabled = true; submitBtn.style.cursor = 'not-allowed'; submitBtn.style.opacity = '0.5';
+        } else {
+            errorMsg.style.display = 'none'; classInput.style.borderColor = '#ccc';
+            submitBtn.disabled = false; submitBtn.style.cursor = 'pointer'; submitBtn.style.opacity = '1';
+        }
+    }
+
+    document.getElementById('modal_grade_id').addEventListener('change', validateClassNameUX);
+    document.getElementById('modal_class_name').addEventListener('input', validateClassNameUX);
+
+    // 9. Gửi ngầm File Excel lên Server để Check lỗi (AJAX - Quy trình 2 bước)
+    function processExcelPreview() {
+        let form = document.getElementById('uploadExcelForm');
+        let formData = new FormData(form);
+        formData.append('action', 'preview_import'); // Báo cho Python biết đây là bước Preview
+
+        // Đổi tên nút trong lúc đợi
+        let btn = document.getElementById('btn_upload_excel');
+        let oldText = btn.innerText;
+        btn.innerText = "Đang quét lỗi..."; btn.disabled = true;
+
+        fetch("{{ url_for('danhsach_khoilop') }}", {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json()) // Nhận JSON từ Python
+        .then(data => {
+            btn.innerText = oldText; btn.disabled = false;
+
+            if (data.status === 'error') {
+                alert(data.message); return;
+            }
+
+            // Đổ dữ liệu vào Popup Xác Nhận
+            document.getElementById('conf_filename').innerText = data.filename;
+            document.getElementById('conf_total_rows').innerText = data.total;
+            document.getElementById('conf_valid_rows').innerText = data.valid_count;
+            document.getElementById('conf_error_rows').innerText = data.error_count;
+            document.getElementById('conf_valid_text').innerText = data.valid_count;
+
+            // Render danh sách lỗi ra bảng
+            let tbody = document.getElementById('conf_error_table_body');
+            tbody.innerHTML = '';
+            if(data.error_count === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="padding: 10px; text-align: center; color: green; font-weight: bold;">Không có dòng nào bị lỗi! Tuyệt vời!</td></tr>';
+            } else {
+                data.error_data.forEach(err => {
+                    let tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${err.row}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd; color: red; font-weight: bold;">${err.class_name}</td>
+                        <td style="padding: 10px; border: 1px solid #ddd;">${err.error}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // Gói các dòng đúng nhét vào Form ẩn
+            document.getElementById('hidden_valid_data').value = JSON.stringify(data.valid_data);
+
+            // Tắt popup 1, Mở popup 2
+            closeModal('importModal');
+            document.getElementById('confirmImportModal').style.display = 'flex';
+        })
+        .catch(error => {
+            btn.innerText = oldText; btn.disabled = false;
+            alert("Lỗi kết nối Server! F12 xem Console nhé.");
+        });
+    }
+</script>
+
+{% endblock %}

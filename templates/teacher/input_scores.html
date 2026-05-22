@@ -1,0 +1,788 @@
+{% extends "base.html" %}
+{% block title %}Nhập điểm môn học{% endblock %}
+
+{% block content %}
+<style>
+/* =========================
+   RESET & CHUNG (Đồng nhất với evaluation.html)
+========================= */
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body{
+    background:#ececec;
+}
+
+.page-wrapper{
+    padding:8px;
+}
+
+.edu-card{
+    width:100%;
+    background:#fff;
+    border:1px solid #9a9a9a;
+}
+
+/* =========================
+   TOOLBAR (Đồng nhất nút và tiêu đề)
+========================= */
+.toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 14px 10px;
+    background:#f4f4f4;
+    border-bottom:1px solid #d6d6d6;
+}
+
+.toolbar-title{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    color:#005da0;
+    font-size:18px;
+    font-weight:700;
+}
+
+.toolbar-actions{
+    display:flex;
+    gap:10px;
+}
+
+.btn-main{
+    border:none;
+    background:#005d99;
+    color:#fff;
+    font-size:15px;
+    font-weight:700;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+}
+
+.btn-main:hover{
+    background:#004d80;
+}
+
+/* =========================
+   GUIDE BOX (Tính năng Đóng/Mở)
+========================= */
+.guide-box {
+    padding: 12px 14px;
+    border-bottom: 1px solid #d9d9d9;
+    background: #fff;
+}
+.guide-box b { font-size: 15px; }
+.guide-box ul { padding-left: 20px; margin-top: 5px; }
+.guide-box li { font-size: 14px; color: #333; line-height: 1.6; }
+
+/* =========================
+   FILTER BAR
+========================= */
+.filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 12px 14px;
+    background: #f6f6f6;
+    border-bottom: 1px solid #d9d9d9;
+}
+
+.filter-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filter-item label{
+    font-size:16px;
+    font-weight:700;
+    color:#111;
+}
+
+.custom-select {
+    position: relative;
+    display: block;
+    height: 46px;
+    border: 1px solid #bdbdbd;
+    background: #fff;
+}
+
+.filter-item:nth-child(1) .custom-select { width: 130px; }
+.filter-item:nth-child(2) .custom-select { width: 130px; }
+.filter-item:nth-child(3) .custom-select { width: 220px; }
+.filter-item:nth-child(4) .custom-select { width: 220px; }
+
+.custom-select select {
+    width: 100%; height: 100%; border: none; outline: none;
+    padding: 0 42px 0 12px; font-size: 15px; background: transparent;
+    appearance: none; -webkit-appearance: none; cursor: pointer;
+}
+
+.select-icon {
+    position: absolute; right: 0; top: 0; width: 40px; height: 100%;
+    border-left: 1px solid #c7c7c7; background: #f4f4f4;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: #555; pointer-events: none;
+}
+
+/* =========================
+   TABLE
+========================= */
+.table-wrapper{
+    width:100%;
+    overflow-x:auto;
+}
+
+.edu-table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:1600px;
+}
+
+.edu-table th{
+    background:#005f99;
+    color:#fff;
+    border:1px solid #b8d0df;
+    text-align:center;
+    vertical-align:middle;
+    font-weight:700;
+    padding: 10px 5px;
+}
+
+.edu-table td{
+    border:1px solid #dddddd;
+    height:52px;
+    background:#f2f2f2;
+    font-size:15px;
+}
+
+.edu-table tbody tr:nth-child(even) td{
+    background:#ebebeb;
+}
+
+.edu-table input {
+    width: 100%; height: 100%; border: none; outline: none;
+    background: transparent; text-align: center; padding: 6px; font-size: 15px;
+}
+
+.edu-table input:focus { background: #fff8c9; }
+.avg-cell { background: #dfdfdf !important; font-weight: 700; text-align: center; }
+.center { text-align: center; }
+.name-cell { padding-left: 10px; text-align: left; font-weight: 500; }
+
+/* Style cho Dropdown tối giản - Hiện dấu v thanh mảnh */
+.minimal-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    border: none !important;
+    background-color: transparent !important;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    text-align-last: center;
+    cursor: pointer;
+
+    /* Cập nhật font và độ đậm để giống bên điểm số */
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 600; /* "Hơi đậm" rất đẹp, giống font của số */
+    color: #111; /* Màu đen tuyền */
+
+    padding-bottom: 5px;
+    outline: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23555%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center right 4px;
+    background-size: 10px;
+}
+
+/* Khi di chuột vào hoặc click vào thì hiện nền sáng hơn để dễ nhận biết */
+.minimal-select:hover, .minimal-select:focus {
+    background-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Đảm bảo ô <td> chứa select không có padding để select chiếm trọn diện tích */
+.edu-table td:has(.minimal-select) {
+    padding: 0 !important;
+}
+    /* Style để thu nhỏ dấu mũi tên giống bên evaluation.html */
+.head-with-arrow {
+    position: relative;
+    padding-bottom: 18px !important; /* Tạo khoảng trống phía dưới cho mũi tên */
+}
+
+.dropdown-arrow {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px; /* Thu nhỏ về 10px */
+    color: #fff;
+    font-weight: normal;
+}
+
+.edu-table textarea {
+    width: 100%;
+    height: 100%;
+    min-height: 48px;
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 8px;
+    font-size: 15px;
+    font-family: Arial, sans-serif;
+    line-height: 1.4;
+    resize: none; /* Khóa kéo giãn bằng tay để bảng luôn ngay ngắn */
+    text-align: left; /* Nhận xét dài nên để lề trái để khi xuống dòng chữ ngay hàng thẳng lối */
+}
+
+.edu-table textarea:focus {
+    background: #fff8c9; /* Đổi màu nền khi giáo viên đang gõ */
+}
+
+/* Loại bỏ padding của ô td để ô nhận xét chiếm trọn không gian */
+.edu-table td:has(textarea) {
+    padding: 0 !important;
+    vertical-align: top; /* Đẩy chữ lên trên cùng của ô nhìn sẽ đều hàng */
+}
+</style>
+
+<div class="page-wrapper">
+    <div class="edu-card">
+        <div class="toolbar">
+            <div class="toolbar-title">
+                <i class="fas fa-edit"></i> Nhập điểm môn học
+            </div>
+            <div class="toolbar-actions">
+    <button type="button" id="btnSaveScore" class="btn-main">Cập nhật</button>
+
+    <button type="button" id="btnImportScore" class="btn-main">Nhập điểm từ Excel</button>
+
+    <a href="{{ url_for('export_scores', grade=selected_grade, class_id=selected_class, subject_id=selected_subject, semester_id=selected_semester_id) }}"
+   id="btnExportScore" class="btn-main">
+   Xuất Excel
+</a>
+</div>
+        </div>
+
+        {% if request.args.get('msg') %}
+{% set msg = request.args.get('msg') %}
+{% set is_error = "Từ chối" in msg or "Lỗi" in msg %}
+<div id="status-alert" style="padding: 12px; margin: 10px 14px; border-radius: 4px; font-weight: bold;
+    background: {{ '#f8d7da' if is_error else '#d4edda' }};
+    color: {{ '#721c24' if is_error else '#155724' }};
+    border: 1px solid {{ '#f5c6cb' if is_error else '#c3e6cb' }};">
+    <i class="fas {{ 'fa-exclamation-circle' if is_error else 'fa-check-circle' }}"></i> {{ msg }}
+</div>
+<script>
+    // Thông báo sẽ tự động biến mất sau 6 giây
+    setTimeout(() => {
+        const alert = document.getElementById('status-alert');
+        if(alert) alert.style.display = 'none';
+    }, 6000);
+</script>
+{% endif %}
+
+        <div class="guide-box" id="guideBox">
+            <div id="guideFull">
+                <b>Hướng dẫn/ Ghi chú:</b>
+                <ul>
+                    <li>Với môn tính điểm: Nhập điểm thập phân dùng dấu "." (Ví dụ 9.5 thay cho 9,5).</li>
+                    <li>Với môn nhận xét: Nhập ký tự Đ (Đạt) hoặc C (Chưa đạt).</li>
+                    <li>Học sinh bị bôi <span style="color:red">đỏ</span> là những học sinh NGHỈ HỌC, CHUYỂN TRƯỜNG. Để không hiển thi những học sinh đó hãy vào [Cấu hình hệ thống] chọn mục “Không hiện học sinh sinh đã nghỉ học, chuyển trường”.</li>
+                    <li>Điểm <span style="color:red">đỏ</span> là điểm đã bị sửa lại, di chuột đến điểm để xem chi tiết sửa điểm.</li>
+                    <li>Học sinh được miễn môn sẽ có các điểm TBM là “M”.
+                        <a href="javascript:void(0)" onclick="toggleGuide(false)" style="color:#004dff; text-decoration:none; font-weight: normal; margin-left: 10px;">[Đóng ghi chú]</a>
+                    </li>
+                </ul>
+            </div>
+            <div id="guideShort" style="display: none;">
+                <b>Hướng dẫn/ Ghi chú:</b>
+                <a href="javascript:void(0)" onclick="toggleGuide(true)" style="color:#004dff; text-decoration:none; font-weight: normal; margin-left: 10px;">[Mở ghi chú]</a>
+            </div>
+        </div>
+
+        <form method="GET">
+            <div class="filter-bar">
+                <div class="filter-item">
+                    <label>Khối:</label>
+                    <div class="custom-select">
+                        <select name="grade" onchange="handleFilterChange(this)">
+                            <option value="">Chọn</option>
+                            {% for id, name in filter_grades.items() %}
+                            <option value="{{ id }}" {% if selected_grade == id|string %}selected{% endif %}>{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="select-icon">▼</div>
+                    </div>
+                </div>
+
+                <div class="filter-item">
+                    <label>Lớp:</label>
+                    <div class="custom-select">
+                        <select name="class_id" onchange="handleFilterChange(this)">
+                            <option value="">Chọn</option>
+                            {% for id, info in filter_classes.items() %}
+                                {% if not selected_grade or info.grade_id|string == selected_grade %}
+                                <option value="{{ id }}" {% if selected_class == id|string %}selected{% endif %}>{{ info.name }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                        <div class="select-icon">▼</div>
+                    </div>
+                </div>
+
+                <div class="filter-item">
+                    <label>Môn học:</label>
+                    <div class="custom-select">
+                        <select name="subject_id" onchange="this.form.submit()">
+                            <option value="">Chọn</option>
+                            {% for id, name in filter_subjects.items() %}
+                            <option value="{{ id }}" {% if selected_subject == id|string %}selected{% endif %}>{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="select-icon">▼</div>
+                    </div>
+                </div>
+
+                <div class="filter-item">
+    <label>Học kỳ:</label>
+    <div class="custom-select">
+        <select name="semester_id" onchange="handleSemesterChange(this)">
+            {% for s in semesters %}
+            <option value="{{ s.semester_id }}" {% if selected_semester_id == s.semester_id|string %}selected{% endif %}>
+                {{ s.semester_name }}
+            </option>
+            {% endfor %}
+        </select>
+        <div class="select-icon">▼</div>
+    </div>
+</div>
+            </div>
+        </form>
+
+        <form id="scoreForm" method="POST" action="{{ url_for('save_subject_scores') }}">
+            <input type="hidden" name="grade_hidden" value="{{ selected_grade }}">
+            <input type="hidden" name="class_id_hidden" value="{{ selected_class }}">
+            <input type="hidden" name="subject_id_hidden" value="{{ selected_subject }}">
+            <input type="hidden" name="semester_id_hidden" value="{{ selected_semester_id }}">
+            <div class="table-wrapper">
+                <table class="edu-table">
+                    <thead>
+    <tr>
+        <th rowspan="2" style="width:50px;">STT</th>
+        <th rowspan="2" style="width:80px;">Xem KQHT học kỳ</th>
+        <th rowspan="2" style="width:120px;">Mã định danh Bộ GD&ĐT</th>
+        <th rowspan="2" style="width:220px;">Họ tên</th>
+        <th colspan="4">ĐĐGtx</th>
+        <th rowspan="2" class="head-with-arrow" style="width:75px;">ĐĐGgk <div class="dropdown-arrow">▼</div></th>
+        <th rowspan="2" class="head-with-arrow" style="width:75px;">ĐĐGck <div class="dropdown-arrow">▼</div></th>
+        <th rowspan="2" style="width:70px;">ĐTB HK1</th>
+        <th rowspan="2" style="width:70px;">ĐTB HK2</th>
+        <th rowspan="2" style="width:70px;">ĐTB CN</th>
+        <th rowspan="2" style="width: 260px;">Nhận xét sự tiến bộ, ưu điểm nổi bật, hạn chế chủ yếu</th>
+<th rowspan="2" style="width: 260px;">Nhận xét ghi học bạ</th>
+    </tr>
+    <tr>
+        <th class="head-with-arrow" style="width:45px;">1 <div class="dropdown-arrow">▼</div></th>
+        <th class="head-with-arrow" style="width:45px;">2 <div class="dropdown-arrow">▼</div></th>
+        <th class="head-with-arrow" style="width:45px;">3 <div class="dropdown-arrow">▼</div></th>
+        <th class="head-with-arrow" style="width:45px;">4 <div class="dropdown-arrow">▼</div></th>
+    </tr>
+</thead>
+                    <tbody>
+    {% for s in students %}
+    {% set sid = s.student_id %}
+    {% set d = score_map.get(sid, {}) %}
+    <tr>
+        <td class="center">{{ loop.index }}</td>
+        <td class="center">
+        <i class="fas fa-eye view-kqht"
+       style="color:#005da0; cursor:pointer;"
+       data-name="{{ s.students.ho_ten }}"
+       data-subject="{{ subject_info.subject_name }}"
+       data-sem="{{ 'I' if selected_semester_id == '1' else 'II' }}"
+       data-tx1="{{ d.current.get('tx_1', '') }}"
+       data-tx2="{{ d.current.get('tx_2', '') }}"
+       data-tx3="{{ d.current.get('tx_3', '') }}"
+       data-tx4="{{ d.current.get('tx_4', '') }}"
+       data-gk="{{ d.current.get('midterm_score', '') if subject_info.evaluation_type == 'Chấm điểm' else d.current.get('midterm_result_level', '') }}"
+       data-ck="{{ d.current.get('final_score', '') if subject_info.evaluation_type == 'Chấm điểm' else d.current.get('final_result_level', '') }}"
+       data-avg="{% if selected_semester_id == '1' %}{{ d.hk1.get('dtb_hk1', '') }}{% else %}{{ d.hk2.get('dtb_hk2', '') }}{% endif %}"
+       data-fb="{{ d.current.get('feedback_highlight', '') }}"
+       data-report="{{ d.current.get('feedback_report_card', '') }}"></i> 
+    </td>
+        <td class="center">{{ s.students.ma_dinh_danh }}</td>
+        <td class="name-cell">{{ s.students.ho_ten }}</td>
+
+        {% if subject_info.evaluation_type == 'Chấm điểm' %}
+            {% for i in range(1, 5) %}
+            <td><input type="text" name="tx{{i}}_{{ sid }}" value="{{ d.current.get('tx_' ~ i, '') }}" class="score-input"></td>
+            {% endfor %}
+            <td><input type="text" name="gk_{{ sid }}" value="{{ d.current.get('midterm_score', '') }}" class="score-input"></td>
+            <td><input type="text" name="ck_{{ sid }}" value="{{ d.current.get('final_score', '') }}" class="score-input"></td>
+
+            <td class="avg-cell"><input type="text" id="avg1_{{ sid }}" value="{{ d.hk1.get('dtb_hk1', '') }}" readonly tabindex="-1" style="background:transparent; border:none; text-align:center; {% if selected_semester_id == '2' %}color:#888;{% endif %}"></td>
+            <td class="avg-cell"><input type="text" id="avg2_{{ sid }}" value="{{ d.hk2.get('dtb_hk2', '') }}" readonly tabindex="-1" style="background:transparent; border:none; text-align:center; {% if selected_semester_id == '1' %}color:#888;{% endif %}"></td>
+            <td class="avg-cell"><input type="text" id="avgcn_{{ sid }}" value="{{ d.dtb_cn or '' }}" readonly tabindex="-1" style="background:transparent; border:none; text-align:center; font-weight:bold; color:{% if d.dtb_cn %}red{% else %}black{% endif %};"></td>
+
+        {% else %}
+    {% for col in ['tx1', 'tx2', 'tx3', 'tx4', 'gk', 'ck', 'avg1', 'avg2', 'avgcn'] %}
+    <td>
+        {% set is_locked = (selected_semester_id == '1' and col in ['avg2', 'avgcn']) or (selected_semester_id == '2' and col == 'avg1') %}
+
+        {# Lấy giá trị từ score_map đã gộp #}
+        {% set val = '' %}
+        {% if col.startswith('tx') %}{% set val = d.current.get('tx_' ~ col[2], '') %}
+        {% elif col == 'gk' %}{% set val = d.current.get('midterm_result_level', '') %}
+        {% elif col == 'ck' %}{% set val = d.current.get('final_result_level', '') %}
+        {% elif col == 'avg1' %}{% set val = d.hk1.get('dtb_hk1', '') %}
+        {% elif col == 'avg2' %}{% set val = d.hk2.get('dtb_hk2', '') %}
+        {% elif col == 'avgcn' %}{% set val = d.dtb_cn or '' %}
+        {% endif %}
+
+        <select name="{{ col }}_{{ sid }}" class="minimal-select"
+                {# Đổ màu đỏ cho cột Cả năm giống bên nhập điểm số #}
+                style="{% if is_locked %}opacity:0.4;{% endif %} {% if col == 'avgcn' and val %}color: #e60000 !important;{% endif %}"
+                {% if is_locked %}disabled{% endif %}>
+            <option value=""> </option>
+            <option value="Đ" {% if val == 'Đ' %}selected{% endif %}>Đ</option>
+            <option value="C" {% if val == 'C' %}selected{% endif %}>C</option>
+        </select>
+    </td>
+    {% endfor %}
+{% endif %}
+
+        <td>
+    <textarea name="feedback_{{ sid }}">{{ d.current.get('feedback_highlight', '') }}</textarea>
+</td>
+<td>
+    <textarea name="report_{{ sid }}">{{ d.current.get('feedback_report_card', '') }}</textarea>
+</td>
+    {% endfor %}
+</tbody>
+                </table>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="kqhtModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:10001; align-items:center; justify-content:center;">
+    <div style="background:#fff; width:750px; padding:25px; border-radius:12px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border-top: 5px solid #005da0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:15px; margin-bottom:20px;">
+            <h3 style="color:#005da0; margin:0; font-size: 22px;">
+                <i class="fas fa-user-graduate"></i> <span id="m_student"></span>
+            </h3>
+            <button type="button" onclick="document.getElementById('kqhtModal').style.display='none'" style="background:#f1f1f1; border:none; width:30px; height:30px; border-radius:50%; font-size:18px; cursor:pointer;">&times;</button>
+        </div>
+
+        <div style="margin-bottom: 15px; font-size: 15px; color: #666;">
+            Môn học: <strong id="m_sub" style="color:#333;"></strong> | Học kỳ: <strong id="m_sem" style="color:#333;"></strong>
+        </div>
+
+        <table style="width:100%; border-collapse:collapse; margin-bottom:20px; text-align: center; border: 1px solid #ddd;">
+            <thead style="background:#f8f9fa;">
+                <tr>
+                    <th style="border:1px solid #ddd; padding:12px;">TX1</th>
+                    <th style="border:1px solid #ddd; padding:12px;">TX2</th>
+                    <th style="border:1px solid #ddd; padding:12px;">TX3</th>
+                    <th style="border:1px solid #ddd; padding:12px;">TX4</th>
+                    <th style="border:1px solid #ddd; padding:12px;">GK</th>
+                    <th style="border:1px solid #ddd; padding:12px;">CK</th>
+                    <th style="border:1px solid #ddd; padding:12px; background:#eef6ff; color:#005da0;">ĐTB HK</th>
+                </tr>
+            </thead>
+            <tbody style="font-size: 16px;">
+                <tr>
+                    <td id="m_tx1" style="border:1px solid #ddd; padding:12px;"></td>
+                    <td id="m_tx2" style="border:1px solid #ddd; padding:12px;"></td>
+                    <td id="m_tx3" style="border:1px solid #ddd; padding:12px;"></td>
+                    <td id="m_tx4" style="border:1px solid #ddd; padding:12px;"></td>
+                    <td id="m_gk" style="border:1px solid #ddd; padding:12px;"></td>
+                    <td id="m_ck" style="border:1px solid #ddd; padding:12px;"></td>
+                    <td id="m_avg" style="border:1px solid #ddd; padding:12px; font-weight:bold; color:red; background:#fffcf0;"></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <div style="border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                <div style="background: #f1f7fd; padding: 8px 15px; border-bottom: 1px solid #e0e0e0; color: #005da0; font-weight: bold; font-size: 13px;">
+                    NHẬN XÉT SỰ TIẾN BỘ, ƯU ĐIỂM NỔI BẬT, HẠN CHẾ CHỦ YẾU
+                </div>
+                <div id="m_fb" style="padding: 12px 15px; font-style: italic; color: #444; min-height: 40px; line-height: 1.5;"></div>
+            </div>
+
+            <div style="border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                <div style="background: #fdf2f2; padding: 8px 15px; border-bottom: 1px solid #e0e0e0; color: #c53030; font-weight: bold; font-size: 13px;">
+                    NHẬN XÉT GHI HỌC BẠ
+                </div>
+                <div id="m_report" style="padding: 12px 15px; font-style: italic; color: #444; min-height: 40px; line-height: 1.5;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="importModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#fff; width:450px; padding:25px; border-radius:12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+        <h3 style="margin-bottom:15px; color:#005da0; display:flex; align-items:center; gap:10px;">
+            <i class="fas fa-file-import"></i> Nhập điểm từ Excel
+        </h3>
+        <form action="{{ url_for('import_scores') }}" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="semester_id" value="{{ selected_semester_id }}">
+            <input type="hidden" name="subject_id" value="{{ selected_subject }}">
+            <input type="hidden" name="class_id" value="{{ selected_class }}">
+            <input type="hidden" name="grade" value="{{ selected_grade }}">
+
+            <div style="background:#f9f9f9; padding:20px; border:2px dashed #cbd5e0; border-radius:8px; text-align:center; margin-bottom:20px;">
+                <input type="file" name="file" accept=".xlsx, .xls" required style="cursor: pointer;">
+                <p style="font-size:12px; color:#666; margin-top:10px;">
+                    * Hệ thống sẽ nạp điểm vào đúng <b>Môn học</b> và <b>Lớp</b> bạn đang chọn trên màn hình.
+                </p>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" onclick="document.getElementById('importModal').style.display='none'"
+                        style="padding:10px 20px; border-radius:8px; border:1px solid #ccc; background:#fff; cursor:pointer; font-weight:bold;">Hủy</button>
+                <button type="submit" class="btn-main">Bắt đầu nhập</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div id="warningModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+    <div style="background:#fff; width:400px; padding:25px; border-radius:12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); text-align:center;">
+        <h3 style="margin-bottom:15px; color:#e53e3e; display:flex; align-items:center; justify-content:center; gap:10px;">
+            <i class="fas fa-info-circle"></i> Thiếu thông tin
+        </h3>
+        <p id="warningMessage" style="font-size:15px; color:#333; line-height:1.6; margin-bottom:20px;">
+            Bạn chưa chọn đầy đủ thông tin lớp học!
+        </p>
+        <button type="button" onclick="document.getElementById('warningModal').style.display='none'"
+                style="padding:10px 30px; border-radius:8px; border:none; background:#005d99; color:#fff; cursor:pointer; font-weight:bold;">Đã hiểu</button>
+    </div>
+</div>
+
+<script>
+function handleSemesterChange(semesterSelect) {
+    const form = semesterSelect.form;
+
+    // Chủ động xóa trắng toàn bộ lựa chọn Khối, Lớp, Môn cũ
+    // Lệnh này ép chuỗi phân cấp quay về chữ "Chọn..." ban đầu
+    const gradeSelect = form.querySelector('select[name="grade"]');
+    const classSelect = form.querySelector('select[name="class_id"]');
+    const subjectSelect = form.querySelector('select[name="subject_id"]');
+
+    if (gradeSelect) gradeSelect.value = "";
+    if (classSelect) classSelect.value = "";
+    if (subjectSelect) subjectSelect.value = "";
+
+    // Tiến hành submit để load lại danh sách theo học kỳ mới
+    form.submit();
+}
+
+function handleFilterChange(currentSelect) {
+    const form = currentSelect.form;
+    const name = currentSelect.name;
+
+    // Nếu thay đổi "Khối" -> Reset Lớp và các mục phía sau
+    if (name === 'grade') {
+        const classSelect = form.querySelector('select[name="class_id"]');
+        if (classSelect) classSelect.value = "";
+
+        // Riêng bên Nhập điểm cần reset thêm Môn học
+        const subjectSelect = form.querySelector('select[name="subject_id"]');
+        if (subjectSelect) subjectSelect.value = "";
+    }
+
+    // Nếu thay đổi "Lớp" ở trang Nhập điểm -> Reset Môn học cho chắc chắn
+    if (name === 'class_id') {
+        const subjectSelect = form.querySelector('select[name="subject_id"]');
+        if (subjectSelect) subjectSelect.value = "";
+    }
+
+    form.submit();
+}
+
+// Hàm đóng mở ghi chú
+function toggleGuide(show) {
+    document.getElementById('guideFull').style.display = show ? 'block' : 'none';
+    document.getElementById('guideShort').style.display = show ? 'none' : 'block';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Kiểm tra xem bảng có dữ liệu học sinh hay không
+    const hasData = document.querySelectorAll('.edu-table tbody tr').length > 0;
+    const warningModal = document.getElementById('warningModal');
+    const warningMsg = document.getElementById('warningMessage');
+
+    // THÊM BIẾN CHO MODAL KQHT
+    const kqhtModal = document.getElementById('kqhtModal');
+
+    // 2. Logic cho nút CẬP NHẬT (Kiểm tra chặn hoàn toàn dấu phẩy "," và kí tự lạ)
+const saveBtn = document.getElementById('btnSaveScore');
+if (saveBtn) {
+    saveBtn.onclick = function() {
+        if (!hasData) {
+            warningMsg.innerText = "Không có danh sách học sinh để lưu điểm! Vui lòng chọn bộ lọc để tải dữ liệu.";
+            warningModal.style.display = 'flex';
+            return;
+        }
+
+        const scoreInputs = document.querySelectorAll('.score-input');
+        let hasError = false;
+        let errorMessage = "";
+
+        for (let input of scoreInputs) {
+            let val = input.value.trim();
+
+            // Nếu ô trống thì bỏ qua
+            if (val === "") continue;
+
+            // CHẶN BẮT BUỘC: Nếu giáo viên nhập dấu phẩy ","
+            if (val.includes(',')) {
+                hasError = true;
+                const row = input.closest('tr');
+                const studentName = row.querySelector('.name-cell').innerText;
+
+                errorMessage = `Học sinh [${studentName}] bị nhập dấu phẩy "${input.value}"!\n\nVui lòng nhập đúng định dạng số thập phân dùng dấu chấm "." (Ví dụ: 9.5 thay vì 9,5).`;
+
+                input.focus();
+                input.style.background = '#fee2e2';
+                break;
+            }
+
+            // Chuyển đổi sang số thực để kiểm tra khoảng điểm hợp lệ (0 - 10)
+            const score = parseFloat(val);
+
+            if (isNaN(score) || score < 0 || score > 10) {
+                hasError = true;
+                const row = input.closest('tr');
+                const studentName = row.querySelector('.name-cell').innerText;
+
+                errorMessage = `Điểm số "${input.value}" của học sinh [${studentName}] không hợp lệ!\n\nLưu ý: Chỉ được nhập số từ 0 đến 10.`;
+
+                input.focus();
+                input.style.background = '#fee2e2';
+                break;
+            }
+        }
+
+        if (hasError) {
+            warningMsg.innerText = errorMessage;
+            warningModal.style.display = 'flex';
+        } else {
+            // Nếu dữ liệu hợp lệ hoàn toàn thì gửi form
+            document.getElementById('scoreForm').submit();
+        }
+    };
+}
+
+    // 3. Logic cho nút XUẤT EXCEL
+    const exportBtn = document.getElementById('btnExportScore');
+    if (exportBtn) {
+        exportBtn.onclick = function(e) {
+            if (!hasData) {
+                e.preventDefault(); // Chặn hành động tải file
+                warningMsg.innerText = "Không có dữ liệu để xuất file Excel! Vui lòng hiển thị danh sách học sinh trước.";
+                warningModal.style.display = 'flex';
+            }
+        };
+    }
+
+    // 4. Logic cho nút NHẬP ĐIỂM TỪ EXCEL
+    const importBtn = document.getElementById('btnImportScore');
+    if (importBtn) {
+        importBtn.onclick = function() {
+            const g = document.querySelector('select[name="grade"]').value;
+            const c = document.querySelector('select[name="class_id"]').value;
+            const sub = document.querySelector('select[name="subject_id"]').value;
+            const s = document.querySelector('select[name="semester_id"]').value;
+
+            if (!g || !c || !sub || !s) {
+                warningMsg.innerText = "Vui lòng chọn đầy đủ Khối, Lớp, Môn học và Học kỳ để xác định đúng vị trí nạp điểm!";
+                warningModal.style.display = 'flex';
+                return;
+            }
+            document.getElementById('importModal').style.display = 'flex';
+        };
+    }
+
+    // 5. Logic tính điểm tự động (Giữ nguyên phần A của bạn)
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('score-input')) {
+            e.target.style.background = '';
+            const sid = e.target.name.split('_')[1];
+            const tr = e.target.closest('tr');
+            const selectedSem = document.querySelector('select[name="semester_id"]').value;
+
+            const avg1El = document.getElementById(`avg1_${sid}`);
+            const avg2El = document.getElementById(`avg2_${sid}`);
+            if (!avg1El || !avg2El) return; // Nếu là môn ĐG nhận xét, thoát ngay không tính toán điểm số
+            
+            const getV = (n) => {
+    let v = tr.querySelector(`input[name="${n}_${sid}"]`).value;
+    if(!v || v.includes(',')) return null; // Nếu có dấu phẩy thì tạm thời không tính điểm trung bốc tự động để chờ báo lỗi khi bấm Lưu
+    let num = parseFloat(v);
+    return num > 10 ? num / 10 : num;
+};
+
+            const txs = [getV('tx1'), getV('tx2'), getV('tx3'), getV('tx4')].filter(x => x !== null);
+            const gk = getV('gk'), ck = getV('ck');
+
+            if (gk !== null && ck !== null) {
+                const resHK = (txs.reduce((a,b)=>a+b,0) + gk*2 + ck*3) / (txs.length + 5);
+                const scoreHKFormatted = resHK.toFixed(1);
+                if (selectedSem === '2') {
+                    document.getElementById(`avg2_${sid}`).value = scoreHKFormatted;
+                } else {
+                    document.getElementById(`avg1_${sid}`).value = scoreHKFormatted;
+                }
+            }
+
+            const avg1Val = parseFloat(document.getElementById(`avg1_${sid}`).value);
+            const avg2Val = parseFloat(document.getElementById(`avg2_${sid}`).value);
+            const avgCNField = document.getElementById(`avgcn_${sid}`);
+
+            if (!isNaN(avg1Val) && !isNaN(avg2Val)) {
+                const resCN = (avg1Val + (avg2Val * 2)) / 3;
+                avgCNField.value = resCN.toFixed(1);
+                avgCNField.style.color = "red";
+            } else {
+                avgCNField.value = "";
+                avgCNField.style.color = "black";
+            }
+        }
+    });
+
+    // 6. MỚI: Logic Xem nhanh KQHT cho riêng học sinh (Thêm vào đây)
+        const kqhtIcons = document.querySelectorAll('.view-kqht');
+    kqhtIcons.forEach(icon => {
+        icon.onclick = function() {
+            document.getElementById('m_student').innerText = (this.dataset.name || "").toUpperCase();
+            document.getElementById('m_sub').innerText = this.dataset.subject || "";
+            document.getElementById('m_sem').innerText = this.dataset.sem || "";
+            document.getElementById('m_tx1').innerText = this.dataset.tx1 || "-";
+            document.getElementById('m_tx2').innerText = this.dataset.tx2 || "-";
+            document.getElementById('m_tx3').innerText = this.dataset.tx3 || "-";
+            document.getElementById('m_tx4').innerText = this.dataset.tx4 || "-";
+            document.getElementById('m_gk').innerText = this.dataset.gk || "-";
+            document.getElementById('m_ck').innerText = this.dataset.ck || "-";
+            document.getElementById('m_avg').innerText = this.dataset.avg || "-";
+
+            // Đổ 2 loại nhận xét
+            document.getElementById('m_fb').innerText = this.dataset.fb || "Chưa có nhận xét.";
+            document.getElementById('m_report').innerText = this.dataset.report || "Chưa có nội dung ghi học bạ.";
+
+            kqhtModal.style.display = 'flex';
+        };
+    });
+});
+</script>
+{% endblock %}

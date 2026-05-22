@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Select2 -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<style>
+.box {
+    background: #f8f8f8;
+    border: 1px solid #ccc;
+}
+
+/* HEADER */
+.box-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: #f0f0f0;
+    border-bottom: 1px solid #ddd;
+}
+
+.box-title {
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* BUTTON */
+.btn {
+    background: #2b7bbb;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    margin-left: 5px;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background: #1f5d8a;
+}
+
+/* FILTER */
+.filter {
+    padding: 10px;
+    display: flex;
+    gap: 20px;
+}
+
+.filter select {
+    padding: 5px;
+    width: 150px;
+}
+
+/* TABLE */
+.table-wrapper {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    background: #1f5d8a;
+    color: white;
+    padding: 10px;
+    border: 1px solid #ccc;
+    text-align: center;
+    vertical-align: middle;
+}
+
+td {
+    padding: 8px;
+    border: 1px solid #ddd;
+    text-align: center;
+    vertical-align: middle;
+}
+
+tbody tr:nth-child(even) {
+    background: #f2f2f2;
+}
+
+tbody tr:hover {
+    background: #e6f0fa;
+}
+
+/* SELECT */
+select.teacher-select {
+    width: 100%;
+    padding: 5px;
+}
+
+/* SELECT2 */
+td .select2-container {
+    text-align: left;
+}
+
+.select2-container--default .select2-selection--single {
+    height: 34px;
+    display: flex;
+    align-items: center;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: normal;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 32px;
+}
+</style>
+
+<div class="box">
+
+    <!-- HEADER -->
+    <div class="box-header">
+        <div class="box-title">
+            👨‍🏫 <span>Phân công chủ nhiệm</span>
+        </div>
+
+        <div>
+            <button type="submit" form="formPC" class="btn">Cập nhật</button>
+
+            <a href="{{ url_for('export_excel_phancong', year_id=selected_year, grade_id=selected_grade) }}">
+                <button type="button" class="btn">Xuất Excel</button>
+            </a>
+        </div>
+    </div>
+
+    {% if error %}
+    <div style="color:red; padding:10px; font-weight:bold;">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- FORM -->
+    <form method="POST" id="formPC">
+
+        <!-- FILTER -->
+        <div class="filter">
+            <!-- KHỐI -->
+            <div>
+                <label>Khối:</label><br>
+                <select name="grade_id" onchange="this.form.submit()">
+                    <option value="">Tất cả</option>
+                    {% for g in grades %}
+                        <option value="{{ g.grade_id }}"
+                        {% if g.grade_id == selected_grade %}selected{% endif %}>
+                            {{ g.grade_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- NĂM HỌC -->
+            <div>
+                <label>Năm học:</label><br>
+                <select name="year_id" onchange="this.form.submit()">
+                    {% for y in academic_years %}
+                        <option value="{{ y.year_id }}"
+                        {% if y.year_id == selected_year %}selected{% endif %}>
+                            {{ y.year_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- TABLE -->
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>STT</th>
+                        <th>Tên lớp</th>
+                        <th>Giáo viên chủ nhiệm</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                {% if classes %}
+                    {% for c in classes %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ c.class_name }}</td>
+
+                        <td>
+                            <select
+                                name="teacher_{{ c.class_id }}"
+                                class="teacher-select select2"
+                                data-class-id="{{ c.class_id }}"
+                            >
+                                <option value="">-- Chọn --</option>
+
+                                {% for t in teachers %}
+                                    <option value="{{ t.teacher_id }}"
+                                    {% for a in assignments %}
+                                        {% if a.class_id == c.class_id
+                                              and a.teacher_id == t.teacher_id
+                                              and a.year_id == selected_year %}
+                                            selected
+                                        {% endif %}
+                                    {% endfor %}
+                                    >
+                                        {{ t.teacher_id }} - {{ t.full_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="3" style="text-align:center;">
+                            Không có dữ liệu
+                        </td>
+                    </tr>
+                {% endif %}
+                </tbody>
+
+            </table>
+        </div>
+
+    </form>
+
+</div>
+
+<script>
+const selects = document.querySelectorAll(".teacher-select");
+
+// lưu text gốc
+selects.forEach(select => {
+    Array.from(select.options).forEach(opt => {
+        opt.dataset.originalText = opt.text;
+    });
+});
+
+// chạy khi load
+updateDisabled();
+
+// khi thay đổi
+selects.forEach(select => {
+    select.addEventListener("change", updateDisabled);
+    $(select).on('select2:select select2:unselect', updateDisabled);
+});
+
+function updateDisabled() {
+    let selectedMap = {};
+
+    // lấy giáo viên đang được chọn + lớp
+    selects.forEach(select => {
+        let teacherId = select.value;
+        let className = select.closest("tr").children[1].innerText;
+
+        if (teacherId !== "") {
+            selectedMap[teacherId] = className;
+        }
+    });
+
+    // reset toàn bộ text + disable
+    selects.forEach(select => {
+        Array.from(select.options).forEach(opt => {
+            opt.disabled = false;
+
+            if (opt.dataset.originalText) {
+                opt.text = opt.dataset.originalText;
+            }
+        });
+    });
+
+    // disable giáo viên đã được phân cho lớp khác
+    selects.forEach(select => {
+        let currentClassName = select.closest("tr").children[1].innerText;
+
+        Array.from(select.options).forEach(opt => {
+            let teacherId = opt.value;
+
+            if (!teacherId) return;
+
+            if (
+                selectedMap[teacherId] &&
+                selectedMap[teacherId] !== currentClassName
+            ) {
+                opt.disabled = true;
+                opt.text = opt.dataset.originalText +
+                    " (đã phân lớp " + selectedMap[teacherId] + ")";
+            }
+        });
+    });
+
+    $('.select2').trigger('change.select2');
+}
+</script>
+
+<script>
+$(document).ready(function() {
+    $('.select2').select2({
+        placeholder: "-- Chọn giáo viên --",
+        allowClear: true,
+        width: '100%'
+    });
+});
+</script>
+
+{% endblock %}

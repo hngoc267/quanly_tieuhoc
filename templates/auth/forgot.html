@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quên mật khẩu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="min-h-screen bg-gray-50 flex flex-col items-center font-sans">
+
+<!-- HEADER -->
+<header class="w-full bg-[#90244c] flex justify-between items-center px-8 py-3 text-white shadow-md">
+    <div class="flex items-center gap-4">
+        <img src="{{ url_for('static', filename='images/logo.png') }}"
+             class="w-12 h-12 bg-white p-1 rounded-full">
+        <div>
+            <h1 class="text-sm font-semibold uppercase">
+                Sở Giáo Dục và Đào Tạo Tỉnh Khánh Hòa
+            </h1>
+            <h2 class="text-lg font-bold text-yellow-400 uppercase">
+                Cơ sở dữ liệu ngành giáo dục và đào tạo
+            </h2>
+        </div>
+    </div>
+    <div class="hidden md:block font-semibold">
+        Hotline: 19004740
+    </div>
+</header>
+
+<!-- MAIN -->
+<main class="flex-1 flex items-center justify-center w-full px-4 mt-8 mb-8">
+
+<div class="bg-white shadow-2xl rounded-xl border flex w-full max-w-5xl overflow-hidden">
+
+    <!-- LEFT IMAGE -->
+    <div class="hidden md:flex md:w-1/2 p-10 items-center justify-center">
+        <img src="{{ url_for('static', filename='images/login.png') }}"
+             class="w-64">
+    </div>
+
+    <!-- RIGHT FORM -->
+    <div class="w-full md:w-1/2 p-10 md:p-16 flex flex-col justify-center">
+
+        <!-- TITLE -->
+        <div class="flex items-center gap-4 mb-6">
+            <div class="w-14 h-14 bg-[#90244c] text-white flex items-center justify-center rounded-full">
+                👤
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold uppercase">ĐẶT LẠI MẬT KHẨU</h2>
+                <p class="text-gray-500">Quản lý cấp Trường</p>
+            </div>
+        </div>
+
+        {% if error %}
+        <div class="bg-red-100 text-red-700 px-4 py-2 rounded mb-4">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <!-- STEP 1 -->
+        {% if step == 1 %}
+        <form method="POST" class="space-y-4">
+
+            <h3 class="font-bold uppercase">Tài khoản của bạn</h3>
+
+            <input name="phone"
+                placeholder="Nhập số điện thoại"
+                class="w-full p-3 bg-gray-100 rounded outline-none focus:ring-2 focus:ring-[#90244c]"
+                required>
+
+            <button name="send_otp"
+                class="w-full bg-[#90244c] text-white py-3 rounded font-bold hover:bg-[#7a1e40]">
+                GỬI OTP
+            </button>
+        </form>
+        {% endif %}
+
+        <!-- STEP 2 -->
+        {% if step == 2 %}
+        <form method="POST" class="space-y-4">
+
+            <h3 class="font-bold uppercase">Nhập mã OTP</h3>
+
+            <input name="otp"
+                placeholder="Nhập OTP"
+                class="w-full p-3 bg-gray-100 rounded outline-none focus:ring-2 focus:ring-[#90244c]"
+                required>
+
+            <input name="new_password" type="password"
+                placeholder="Mật khẩu mới"
+                class="w-full p-3 bg-gray-100 rounded outline-none focus:ring-2 focus:ring-[#90244c]"
+                required>
+
+            <input name="confirm_password" type="password"
+                placeholder="Xác nhận mật khẩu"
+                class="w-full p-3 bg-gray-100 rounded outline-none focus:ring-2 focus:ring-[#90244c]"
+                required>
+
+            <button name="reset_password"
+                class="w-full bg-[#90244c] text-white py-3 rounded font-bold">
+                LƯU VÀ ĐĂNG NHẬP
+            </button>
+        </form>
+        {% endif %}
+
+    </div>
+</div>
+</main>
+
+</body>
+</html>

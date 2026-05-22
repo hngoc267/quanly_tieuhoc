@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+:root {
+  --primary: #1a3a6b;
+  --accent: #8b1e3f;
+  --border: #dde1e7;
+  --success: #1a3a6b;
+  --danger: #1a3a6b;
+  --warning: #1a3a6b;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.page-wrapper { padding: 16px; }
+.page-header { display:flex; justify-content:space-between; align-items:center; background:#e8f0fe; padding:10px 16px; border-radius:6px; margin-bottom:14px; }
+.page-header strong { color:var(--primary); font-size:15px; }
+.btn { padding:7px 14px; border:none; border-radius:4px; cursor:pointer; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:5px; }
+.btn-primary   { background:var(--primary); color:#fff; }
+.btn-success   { background:var(--success); color:#fff; }
+.btn-danger    { background:var(--danger); color:#fff; }
+.btn-secondary { background:#1a3a6b; color:#fff; }
+.btn-warning   { background:var(--warning); color:#fff; }
+.btn:hover { opacity:0.88; }
+
+.filter-bar { display:flex; gap:14px; align-items:center; margin-bottom:14px; font-size:13px; font-weight:600; flex-wrap:wrap; background:#fff; border:1px solid var(--border); border-radius:6px; padding:10px 14px; box-shadow:var(--shadow); }
+.filter-bar label { white-space:nowrap; }
+.filter-bar select, .filter-bar input[type=date] { padding:5px 8px; border:1px solid var(--border); border-radius:4px; font-size:13px; min-width:120px; }
+
+.table-card { background:#fff; border:1px solid var(--border); border-radius:6px; overflow:hidden; box-shadow:var(--shadow); }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+thead tr { background:var(--primary); color:#fff; }
+th { padding:10px 8px; text-align:center; white-space:nowrap; border:1px solid #2a4a8b; }
+td { padding:8px; text-align:center; border:1px solid #ddd; }
+tr:nth-child(even) { background:#f4f6fb; }
+tr:hover td { background:#eef2ff; }
+.btn-icon { background:none; border:none; cursor:pointer; color:var(--primary); font-size:15px; }
+
+.badge { padding:3px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+.badge-yes { background:#fee2e2; color:#dc2626; }
+.badge-permitted { background:#dcfce7; color:#16a34a; }
+
+/* MODAL */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99999; align-items:center; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal-box { background:#fff; border-radius:8px; width:500px; max-width:95vw; box-shadow:0 8px 32px rgba(0,0,0,0.2); }
+.modal-header { background:var(--primary); color:#fff; padding:12px 18px; border-radius:8px 8px 0 0; display:flex; justify-content:space-between; align-items:center; font-weight:700; }
+.btn-close { background:none; border:none; color:#fff; font-size:20px; cursor:pointer; }
+.modal-body { padding:20px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.form-group { display:flex; flex-direction:column; gap:4px; }
+.form-group.full { grid-column:1/-1; }
+.form-group label { font-size:12px; font-weight:600; color:#555; }
+.form-control { padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px; width:100%; box-sizing:border-box; }
+.modal-footer { padding:12px 18px; border-top:1px solid #eee; display:flex; justify-content:flex-end; gap:8px; }
+.alert { padding:10px 14px; border-radius:5px; margin-bottom:12px; font-size:13px; }
+.alert-success { background:#d5f5e3; color:#145a32; border:1px solid #a9dfbf; }
+.alert-danger  { background:#fde8e8; color:#c0392b; border:1px solid #f5b7b1; }
+</style>
+
+<div class="page-wrapper">
+  {% if msg %}<div class="alert alert-success">✅ {{ msg }}</div>{% endif %}
+  {% if error_msg %}<div class="alert alert-danger">❌ {{ error_msg }}</div>{% endif %}
+
+  <div class="page-header">
+    <strong>📋 Nhập chuyên cần</strong>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" onclick="openAddModal()">➕ Thêm mới</button>
+      <button class="btn btn-danger"  onclick="deleteSelected()">🗑️ Xóa</button>
+      <button class="btn btn-secondary" onclick="openImportModal()">📤 Nhập từ Excel</button>
+      <button class="btn btn-success"   onclick="exportExcel()">📥 Xuất file Excel</button>
+    </div>
+  </div>
+
+  <!-- BỘ LỌC -->
+  <form method="GET" class="filter-bar">
+    <label>Khối:</label>
+    <select name="grade_id" onchange="this.form.submit()">
+      <option value="">Chọn</option>
+      {% for g in grades %}
+      <option value="{{ g.grade_id }}" {% if selected_grade == g.grade_id %}selected{% endif %}>{{ g.grade_name }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Lớp:</label>
+    <select name="class_id" onchange="this.form.submit()">
+      <option value="">Chọn</option>
+      {% for c in classes %}
+      <option value="{{ c.class_id }}" {% if selected_class == c.class_id %}selected{% endif %}>{{ c.class_name }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Từ ngày:</label>
+    <input type="date" name="from_date" value="{{ from_date or '' }}" onchange="this.form.submit()">
+
+    <label>Đến ngày:</label>
+    <input type="date" name="to_date" value="{{ to_date or '' }}" onchange="this.form.submit()">
+  </form>
+
+  <!-- BẢNG -->
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th width="35"><input type="checkbox" id="chkAll" onchange="toggleAll(this)"></th>
+          <th width="40">STT</th>
+          <th width="50">Sửa</th>
+          <th>Mã định danh Bộ GD&ĐT</th>
+          <th>Họ tên</th>
+          <th>Ngày sinh</th>
+          <th>Giới tính</th>
+          <th>Lớp</th>
+          <th>Ngày nghỉ</th>
+          <th>Buổi nghỉ</th>
+          <th>Có phép</th>
+          <th>Lý do nghỉ học</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in attendances %}
+        <tr>
+          <td><input type="checkbox" class="chk-row" value="{{ a.attendance_id }}"></td>
+          <td>{{ loop.index }}</td>
+          <td><button class="btn-icon" onclick='openEditModal({{ a | tojson }})'>✏️</button></td>
+          <td>{{ a.ma_dinh_danh or '' }}</td>
+          <td style="text-align:left;font-weight:600">{{ a.ho_ten or '' }}</td>
+          <td>{{ a.ngay_sinh | format_date if a.ngay_sinh else '' }}</td>
+          <td>{{ a.gioi_tinh or '' }}</td>
+          <td>{{ a.class_name or '' }}</td>
+          <td>{{ a.absence_date | format_date if a.absence_date else '' }}</td>
+          <td>{{ a.session or '' }}</td>
+          <td>
+            {% if a.is_permitted %}
+              <span class="badge badge-permitted">Có phép</span>
+            {% else %}
+              <span class="badge badge-yes">Không phép</span>
+            {% endif %}
+          </td>
+          <td>{{ a.reason or '' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="12" style="color:#aaa;padding:24px">Chưa có dữ liệu điểm danh</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL THÊM/SỬA -->
+<div class="modal-overlay" id="attendModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span id="modal-title">➕ Thêm vắng học</span>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+    <form method="POST">
+      <input type="hidden" name="action" id="form-action" value="add">
+      <input type="hidden" name="attendance_id" id="form-id">
+      <input type="hidden" name="grade_id" value="{{ selected_grade or '' }}">
+      <input type="hidden" name="class_id_filter" value="{{ selected_class or '' }}">
+      <div class="modal-body">
+        <div class="form-group full">
+          <label>Học sinh <span style="color:red">*</span></label>
+          <select name="student_id" id="form-student" class="form-control" required>
+            <option value="">-- Chọn học sinh --</option>
+            {% for s in students %}
+            <option value="{{ s.student_id }}">{{ s.ho_ten }} ({{ s.ma_dinh_danh }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Lớp <span style="color:red">*</span></label>
+          <select name="class_id" id="form-class" class="form-control" required>
+            <option value="">-- Chọn lớp --</option>
+            {% for c in classes %}
+            <option value="{{ c.class_id }}" {% if selected_class == c.class_id %}selected{% endif %}>{{ c.class_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ngày nghỉ <span style="color:red">*</span></label>
+          <input type="date" name="absence_date" id="form-date" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Buổi nghỉ</label>
+          <select name="session" id="form-session" class="form-control">
+            <option value="Sáng">Sáng</option>
+            <option value="Chiều">Chiều</option>
+            <option value="Cả ngày">Cả ngày</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Có phép</label>
+          <select name="is_permitted" id="form-permitted" class="form-control">
+            <option value="false">Không phép</option>
+            <option value="true">Có phép</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Lý do nghỉ học</label>
+          <input type="text" name="reason" id="form-reason" class="form-control" placeholder="Nhập lý do...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" style="background:#e5e7eb" onclick="closeModal()">Hủy</button>
+        <button type="submit" class="btn btn-primary">💾 Lưu</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- FORM XÓA -->
+<form id="deleteForm" method="POST">
+  <input type="hidden" name="action" value="delete">
+  <input type="hidden" name="ids" id="delete-ids">
+</form>
+
+<!-- MODAL NHẬP EXCEL -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      📤 Nhập điểm danh từ Excel
+      <button class="btn-close" onclick="closeImportModal()">✕</button>
+    </div>
+    <form method="POST" action="/teacher/diem-danh/import" enctype="multipart/form-data">
+      <input type="hidden" name="class_id" value="{{ selected_class or '' }}">
+      <div class="modal-body" style="grid-template-columns:1fr;gap:14px;">
+        <div class="form-group">
+          <label>Chọn file Excel (.xlsx)</label>
+          <input type="file" name="file" accept=".xlsx,.xls" class="form-control" required>
+        </div>
+        <div style="background:#f0f4ff;border-radius:5px;padding:10px;font-size:12px;color:#555;">
+          📌 Lưu ý: File phải đúng định dạng mẫu. 
+          <a href="/teacher/diem-danh/template" style="color:var(--primary);font-weight:600;">
+            📥 Tải file mẫu tại đây
+          </a>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" style="background:#e5e7eb" onclick="closeImportModal()">Hủy</button>
+        <button type="submit" class="btn btn-primary">📤 Nhập dữ liệu</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function toggleAll(cb) { document.querySelectorAll('.chk-row').forEach(c => c.checked = cb.checked); }
+
+function openAddModal() {
+  document.getElementById('modal-title').textContent = '➕ Thêm vắng học';
+  document.getElementById('form-action').value = 'add';
+  document.getElementById('form-id').value = '';
+  document.getElementById('form-student').value = '';
+  document.getElementById('form-date').value = '';
+  document.getElementById('form-session').value = 'Sáng';
+  document.getElementById('form-permitted').value = 'false';
+  document.getElementById('form-reason').value = '';
+  document.getElementById('attendModal').classList.add('show');
+}
+
+function openEditModal(a) {
+  document.getElementById('modal-title').textContent = '✏️ Sửa vắng học';
+  document.getElementById('form-action').value = 'edit';
+  document.getElementById('form-id').value = a.attendance_id;
+  document.getElementById('form-student').value = a.student_id;
+  document.getElementById('form-class').value = a.class_id;
+  document.getElementById('form-date').value = a.absence_date ? a.absence_date.substring(0,10) : '';
+  document.getElementById('form-session').value = a.session || 'Sáng';
+  document.getElementById('form-permitted').value = a.is_permitted ? 'true' : 'false';
+  document.getElementById('form-reason').value = a.reason || '';
+  document.getElementById('attendModal').classList.add('show');
+}
+
+function closeModal() { document.getElementById('attendModal').classList.remove('show'); }
+
+function deleteSelected() {
+  const ids = [...document.querySelectorAll('.chk-row:checked')].map(c => c.value);
+  if (!ids.length) { alert('Chọn ít nhất 1 bản ghi!'); return; }
+  if (!confirm(`Xóa ${ids.length} bản ghi đã chọn?`)) return;
+  document.getElementById('delete-ids').value = ids.join(',');
+  document.getElementById('deleteForm').submit();
+}
+
+function openImportModal() { document.getElementById('importModal').classList.add('show'); }
+function closeImportModal() { document.getElementById('importModal').classList.remove('show'); }
+
+function exportExcel() {
+  const cls  = '{{ selected_class or "" }}';
+  const from = document.querySelector('input[name=from_date]')?.value || '';
+  const to   = document.querySelector('input[name=to_date]')?.value || '';
+  window.location.href = `/teacher/diem-danh/export?class_id=${cls}&from_date=${from}&to_date=${to}`;
+}
+
+document.getElementById('attendModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+document.getElementById('importModal').addEventListener('click', function(e) {
+  if (e.target === this) closeImportModal();
+});
+</script>
+{% endblock %}

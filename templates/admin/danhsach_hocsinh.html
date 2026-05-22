@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+{% block title %}Khởi tạo danh sách học sinh theo lớp{% endblock %}
+
+{% block content %}
+<style>
+    /* CUSTOM UI: MODAL EXCEL UPLOAD & PREVIEW */
+    .modal-excel-box { width: 600px; background: white; border: 1px solid #999; font-family: Arial, sans-serif; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+    .excel-header { display: flex; align-items: center; gap: 10px; color: #1565C0; font-weight: bold; font-size: 15px; padding: 10px 15px; border-bottom: 1px solid #ccc; background: #f8f9fa;}
+    .excel-body { padding: 20px; }
+    .excel-instruction { margin-top: 15px; line-height: 1.8; font-size: 13px; margin-left: 20px;}
+    .excel-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 15px; border-top: 1px solid #eee; }
+
+    .preview-stats { font-size: 13px; line-height: 1.6; margin-bottom: 15px; }
+    .preview-stats strong { color: #000; }
+    .table-wrapper { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; margin-bottom: 15px;}
+    .error-row { color: red; font-size: 12px;}
+
+    /* CUSTOM UI: TOAST NOTIFICATIONS (GÓC DƯỚI PHẢI)  */
+    #toast-container { position: fixed; bottom: 30px; right: 30px; z-index: 9999999; display: flex; flex-direction: column-reverse; gap: 10px; }
+    .toast-msg { padding: 15px 40px; border-radius: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); font-weight: bold; text-align: center; font-size: 15px; animation: slideInRight 0.3s ease-out forwards; }
+    .toast-success { background-color: #e6f4ea; color: #159f46; border: 1px solid #c3e6cb; }
+    .toast-warning, .toast-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+    @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeOut { to { opacity: 0; } }
+
+    /* KHUNG TRANG CHÍNH & TOOLBAR */
+    .page-container { background: white; border: 1px solid #ddd; padding: 15px; min-height: 600px; font-family: Arial, sans-serif; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 12px; margin-bottom: 15px; }
+    .page-title { color: #1565C0; font-weight: bold; font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px; }
+    .btn-group { display: flex; gap: 5px; }
+    .action-btn { color: white; border: none; padding: 7px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; }
+    .btn-excel { background: #0277bd; }
+    .btn-delete-action { background: #1565C0; color: white; border: none; padding: 10px 25px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px; }
+
+    .note-section { font-size: 13px; margin-bottom: 20px; line-height: 1.6; color: #000; }
+    .note-section ul { margin: 5px 0; padding-left: 20px; }
+    .text-link { color: #1565C0; text-decoration: none; cursor: pointer; font-weight: bold; }
+
+    /* BỘ LỌC */
+    .filter-wrapper { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 13px; font-weight: bold; }
+    .filter-select { padding: 5px; width: 200px; border: 1px solid #ccc; }
+
+    /* BẢNG DỮ LIỆU */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: center; }
+    th { background: #1162a8; color: white; padding: 12px; border: 1px solid #ccc; text-align: center; }
+    td { padding: 10px; border: 1px solid #ccc; text-align: center; }
+    .text-left { text-align: left; }
+    .text-bold { font-weight: bold; }
+    .row-gray { background: #f4f5f7; }
+
+    /* MODAL OVERLAY CHUNG */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999999; justify-content: center; align-items: center; }
+</style>
+
+<div class="page-container">
+    <div class="toolbar">
+        <h4 class="page-title"><span style="font-size: 18px;">👤</span> Khởi tạo danh sách học sinh theo lớp (Năm học: {{ current_year_name }})</h4>
+        <div class="btn-group">
+            <button class="action-btn btn-excel" onclick="window.location.href='{{ url_for('tai_mau_hocsinh') }}'">Tải file Excel mẫu</button>
+            <button class="action-btn btn-excel" onclick="openModal('modal-upload-excel')">Nhập từ file Excel</button>
+            <button class="action-btn btn-excel" onclick="exportExcel()">Xuất Excel</button>
+        </div>
+    </div>
+
+    <div class="note-section">
+        <div class="note-content">
+            <strong>Hướng dẫn/ Ghi chú:</strong>
+            <ul>
+                <li>Kích [ Tải file Excel mẫu ] để tải xuống form dữ liệu học sinh chuẩn.</li>
+                <li>Kích [ Nhập từ file Excel ] để nạp danh sách học sinh hàng loạt vào lớp.</li>
+                <li>Chọn Khối và Lớp để xem dữ liệu học sinh đã được khởi tạo.</li>
+                <li>Nếu muốn chỉnh sửa hoặc bổ sung danh sách, hãy dùng lại chức năng nhập Excel hoặc cập nhật từng học sinh sau khi khởi tạo.</li>
+                <li>Để ẩn ghi chú, kích <a class="text-link" onclick="toggleNote(this)">[Đóng ghi chú]</a></li>
+            </ul>
+        </div>
+        <div id="reopen-note" style="display: none; margin-top: 5px; font-size: 13px;">
+            <strong>Hướng dẫn/ Ghi chú:</strong> <a class="text-link" onclick="toggleNote(this)">[+] Xem hướng dẫn/ghi chú</a>
+        </div>
+    </div>
+
+    <!-- BỘ LỌC -->
+    <form method="GET" action="{{ url_for('khoitao_hocsinh') }}" id="filterForm">
+        <div class="filter-wrapper">
+            <label>Khối:</label>
+            <select class="filter-select" name="grade_id" id="filter_grade_id" onchange="this.form.submit();">
+                <option value="">-- Chọn khối --</option>
+                {% for g in grades %}<option value="{{ g.grade_id }}" {% if g.grade_id|string == f_grade %}selected{% endif %}>{{ g.grade_name }}</option>{% endfor %}
+            </select>
+
+            <label style="margin-left: 20px;">Lớp:</label>
+            <select class="filter-select" name="class_id" id="filter_class_id" onchange="this.form.submit()">
+                <option value="">-- Chọn lớp --</option>
+            </select>
+        </div>
+    </form>
+
+    <!-- BẢNG DỮ LIỆU -->
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50px;">STT</th>
+                <th>Mã định danh</th>
+                <th>Họ tên</th>
+                <th>Giới tính</th>
+                <th>Ngày sinh</th>
+                <th>Trạng thái</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in students %}
+            <tr class="{% if loop.index % 2 == 0 %}row-gray{% endif %}">
+                <td>{{ loop.index }}</td>
+                <td>{{ s.ma_dinh_danh }}</td>
+                <td class="text-left text-bold">{{ s.ho_ten }}</td>
+                <td>{{ s.gioi_tinh }}</td>
+                <td>{{ s.ngay_sinh | format_date }}</td>
+                <td style="color: green; font-weight: bold;">Đang học</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="padding: 20px; color: gray;">Chưa có dữ liệu học sinh. Vui lòng chọn lớp hoặc nhập từ Excel.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- KHU VỰC HIỂN THỊ TOAST NOTIFICATION -->
+<div id="toast-container"></div>
+
+<!-- MODAL: UPLOAD FILE EXCEL -->
+<div id="modal-upload-excel" class="modal-overlay">
+    <div class="modal-excel-box">
+        <div class="excel-header">
+            <span>📄 Khởi tạo danh sách học sinh từ file Excel</span>
+        </div>
+        <div class="excel-body">
+            <a href="{{ url_for('tai_mau_hocsinh') }}" class="btn-delete-action" style="text-decoration: none; display: inline-block;">Tải file mẫu có dữ liệu</a>
+            <div class="excel-instruction">
+                1. File Excel phải có các cột bắt buộc: <strong>Họ tên</strong> và <strong>Tên lớp</strong>.<br>
+                2. Tên lớp phải nhập chính xác theo dữ liệu đã cấu hình trong năm học hiện tại.<br>
+                3. Không thay đổi định dạng file mẫu.
+            </div>
+            <form id="uploadExcelForm" style="margin-top: 20px;">
+                <input type="file" id="excel_file" name="excel_file" accept=".xlsx, .xls" style="border: 1px solid #ccc; padding: 5px; width: 100%;">
+            </form>
+        </div>
+        <div class="excel-footer">
+            <button type="button" class="btn-delete-action" style="background:#666;" onclick="closeModal('modal-upload-excel')">Huỷ bỏ</button>
+            <button type="button" class="btn-delete-action" onclick="submitExcelPreview(this)">Tải lên</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: XÁC NHẬN NHẬP DỮ LIỆU (PREVIEW LỖI) -->
+<div id="modal-preview-excel" class="modal-overlay">
+    <div class="modal-excel-box" style="width: 700px;">
+        <div class="excel-header" style="justify-content: center; text-transform: uppercase;">Xác nhận nhập dữ liệu</div>
+        <div class="excel-body">
+            <div class="preview-stats">
+                Tên file: <strong id="pv_filename">Danh_sach.xlsx</strong><br>
+                Tổng số dòng đọc được: <strong id="pv_total">0</strong><br><br>
+                Hợp lệ: <strong id="pv_valid" style="color: green;">0</strong> dòng<br>
+                Báo lỗi: <strong id="pv_error" style="color: red;">0</strong> dòng
+            </div>
+
+            <div style="color: red; font-weight: bold; font-size: 13px; margin-bottom: 5px;">Chi tiết các dòng lỗi</div>
+            <div class="table-wrapper">
+                <table style="width: 100%; border: none;">
+                    <thead style="position: sticky; top: 0;">
+                        <tr>
+                            <th style="background: #1162a8; color: white; font-size:12px; padding:8px;">Dòng</th>
+                            <th style="background: #1162a8; color: white; font-size:12px; padding:8px;">Họ tên</th>
+                            <th style="background: #1162a8; color: white; font-size:12px; padding:8px;">Chi tiết lỗi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pv_error_table">
+                        <!-- JS sẽ đổ dữ liệu dòng lỗi vào đây -->
+                    </tbody>
+                </table>
+            </div>
+
+            <p style="font-size: 13px; font-weight: bold; font-style: italic;">
+                Hệ thống sẽ bỏ qua các dòng lỗi và chỉ nhập <span id="pv_valid_txt" style="color: green;">0</span> dòng hợp lệ.<br>
+                Bạn có muốn tiếp tục?
+            </p>
+        </div>
+
+        <form method="POST" action="{{ url_for('khoitao_hocsinh') }}" id="confirmImportForm">
+            <input type="hidden" name="action" value="confirm_import">
+            <input type="hidden" name="valid_data" id="hidden_valid_data">
+            <div class="excel-footer" style="justify-content: center; gap: 20px;">
+                <button type="button" class="btn-delete-action" style="background:#666;" onclick="closeModal('modal-preview-excel')">Về lại/ Huỷ bỏ</button>
+                <button type="submit" class="btn-delete-action" id="btnConfirmImport">ĐỒNG Ý XÁC NHẬN</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const allClasses = {{ classes | tojson | safe }};
+    const currentClassId = "{{ f_class }}";
+
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    function showToast(message, type) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast-msg toast-${type}`;
+        toast.innerText = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.animation = "fadeOut 0.3s forwards";
+            setTimeout(() => { toast.remove(); }, 300);
+        }, 3500);
+    }
+
+    function toggleNote(el) {
+        const section = el.closest('.note-section');
+        const noteContent = section.querySelector('.note-content');
+        const reopen = document.getElementById('reopen-note');
+        if (noteContent.style.display !== 'none') {
+            noteContent.style.display = 'none';
+            reopen.style.display = 'block';
+        } else {
+            noteContent.style.display = 'block';
+            reopen.style.display = 'none';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    showToast("{{ message }}", "{{ category }}");
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        updateClassFilter();
+    });
+
+    function updateClassFilter() {
+        const gradeId = document.getElementById('filter_grade_id').value;
+        const classSelect = document.getElementById('filter_class_id');
+        classSelect.innerHTML = '<option value="">-- Chọn lớp --</option>';
+
+        if (gradeId) {
+            const filtered = allClasses.filter(c => String(c.grade_id) === String(gradeId));
+            filtered.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.class_id;
+                opt.textContent = c.class_name;
+                if (String(c.class_id) === String(currentClassId)) opt.selected = true;
+                classSelect.appendChild(opt);
+            });
+        }
+    }
+
+    function submitExcelPreview(btn) {
+        const fileInput = document.getElementById('excel_file');
+        if (!fileInput.files.length) {
+            showToast("Vui lòng chọn file Excel!", "warning");
+            return;
+        }
+        const formData = new FormData();
+        formData.append('action', 'preview_import');
+        formData.append('excel_file', fileInput.files[0]);
+
+        btn.innerText = "Đang xử lý...";
+        btn.disabled = true;
+
+        fetch("{{ url_for('khoitao_hocsinh') }}", {
+            method: "POST",
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.innerText = "Tải lên";
+            btn.disabled = false;
+
+            if (data.status === "error") {
+                showToast(data.message, "error");
+                return;
+            }
+
+            document.getElementById('pv_filename').innerText = data.filename;
+            document.getElementById('pv_total').innerText = data.total;
+            document.getElementById('pv_valid').innerText = data.valid_count;
+            document.getElementById('pv_valid_txt').innerText = data.valid_count;
+            document.getElementById('pv_error').innerText = data.error_count;
+
+            const tbody = document.getElementById('pv_error_table');
+            tbody.innerHTML = '';
+            if (data.error_count === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="padding: 10px; color: green; font-weight: bold; text-align: center;">Không có dòng nào bị lỗi!</td></tr>';
+            } else {
+                data.error_data.forEach(err => {
+                    tbody.innerHTML += `
+                        <tr class="error-row">
+                            <td style="padding: 5px; border-bottom: 1px solid #ddd; text-align: center;">${err.row}</td>
+                            <td style="padding: 5px; border-bottom: 1px solid #ddd; text-align: left;">${err.name}</td>
+                            <td style="padding: 5px; border-bottom: 1px solid #ddd; text-align: left;">${err.error}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('hidden_valid_data').value = JSON.stringify(data.valid_data);
+
+            closeModal('modal-upload-excel');
+            openModal('modal-preview-excel');
+        })
+        .catch(err => {
+            showToast("Có lỗi xảy ra khi đọc file! " + err, "error");
+            btn.innerText = "Tải lên";
+            btn.disabled = false;
+        });
+    }
+
+    function exportExcel() {
+        const gradeId = document.getElementById('filter_grade_id').value;
+        const classId = document.getElementById('filter_class_id').value;
+        if (!classId) {
+            showToast("Vui lòng chọn lớp để xuất Excel.", "warning");
+            return;
+        }
+        let url = "{{ url_for('export_khoitao_hocsinh') }}?";
+        if (gradeId) url += `grade_id=${gradeId}&`;
+        if (classId) url += `class_id=${classId}&`;
+        window.location.href = url;
+    }
+</script>
+{% endblock %}

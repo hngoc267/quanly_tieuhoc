@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+:root {
+  --primary: #1a3a6b;
+  --accent: #8b1e3f;
+  --border: #dde1e7;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.page-wrapper { padding: 16px; }
+.page-header { display:flex; align-items:center; background:#e8f0fe; padding:10px 16px; border-radius:6px; margin-bottom:14px; }
+.page-header strong { color:var(--primary); font-size:15px; }
+
+.filter-bar { display:flex; gap:14px; align-items:center; margin-bottom:14px; font-size:13px; font-weight:600; flex-wrap:wrap; }
+.filter-bar label { white-space:nowrap; }
+.filter-bar select { padding:5px 8px; border:1px solid var(--border); border-radius:4px; font-size:13px; min-width:100px; }
+
+.note-card {
+  background-color: #ffffff; 
+  border: 1px solid #1b4584; 
+  padding: 16px 20px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03); 
+}
+.note-card .note-title {
+  color: #1a3a6b;
+  font-style: bold;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.note-list {
+  margin: 0;
+  padding-left: 20px;
+  list-style-type: disc;
+}
+.note-list li {
+  font-size: 13px;
+  color: #1c1d20; 
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+.note-list li:last-child {
+  margin-bottom: 0;
+}
+.note-sub-text {
+  display: block;
+  margin-top: 4px;
+  padding-left: 14px;
+  color: #1c1d20;
+  position: relative;
+}
+.note-sub-text::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #1c1d20;
+}
+
+.table-card { background:#fff; border:1px solid var(--border); border-radius:6px; overflow:hidden; box-shadow:var(--shadow); }
+table { width:100%; border-collapse:collapse; font-size:12px; }
+
+/* HEADER ĐA TẦNG */
+.th-group { background:var(--primary); color:#fff; text-align:center; padding:8px 4px; border:1px solid #2a4a8b; font-weight:700; }
+.th-sub   { background:#2a4a8b; color:#fff; text-align:center; padding:6px 4px; border:1px solid #3a5a9b; font-size:11px; }
+.th-leaf  { background:#3a5a9b; color:#fff; text-align:center; padding:5px 3px; border:1px solid #4a6aab; font-size:10px; white-space:nowrap; }
+
+td { padding:7px 5px; text-align:center; border:1px solid #ddd; font-size:12px; }
+td.subject-name { text-align:left; padding-left:10px; font-weight:600; color:var(--primary); white-space:nowrap; }
+td input[type=number] {
+  width:46px; padding:3px 4px; border:1px solid #ccc; border-radius:3px;
+  text-align:center; font-size:11px;
+}
+td input[type=number]:focus { outline:none; border-color:var(--primary); }
+tr:nth-child(even) { background:#f4f6fb; }
+
+.btn { padding:7px 14px; border:none; border-radius:4px; cursor:pointer; font-size:13px; font-weight:600; }
+.btn-primary { background:var(--primary); color:#fff; }
+.btn:hover { opacity:0.88; }
+
+.percent-cell { color:#6b7280; font-size:11px; }
+
+.alert { padding:10px 14px; border-radius:5px; margin-bottom:12px; font-size:13px; }
+.alert-success { background:#d5f5e3; color:#145a32; border:1px solid #a9dfbf; }
+.alert-danger  { background:#fde8e8; color:#c0392b; border:1px solid #f5b7b1; }
+</style>
+
+<div class="page-wrapper">
+  {% if msg %}<div class="alert alert-success">✅ {{ msg }}</div>{% endif %}
+  {% if error_msg %}<div class="alert alert-danger">❌ {{ error_msg }}</div>{% endif %}
+
+  <div class="page-header">
+    <strong>📊 Kế hoạch giáo dục</strong>
+  </div>
+
+  <!-- BỘ LỌC -->
+  <form method="GET" class="filter-bar">
+    <label>Khối:</label>
+    <select name="grade_id" onchange="this.form.submit()">
+      <option value="">Chọn</option>
+      {% for g in grades %}
+      <option value="{{ g.grade_id }}" {% if selected_grade == g.grade_id %}selected{% endif %}>{{ g.grade_name }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Lớp:</label>
+    <select name="class_id" onchange="this.form.submit()">
+      <option value="">Chọn</option>
+      {% for c in classes %}
+      <option value="{{ c.class_id }}" {% if selected_class == c.class_id %}selected{% endif %}>{{ c.class_name }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
+  <div class="note-card">
+    <div class="note-title">⚠️ Lưu ý quy đổi thống kê kế hoạch:</div>
+    <ul class="note-list">
+      <li>Các môn <strong>Chấm điểm (Toán, Tiếng Việt)</strong>: Dữ liệu thống kê dựa trên dải điểm số thực tế (9-10, 7-8, 5-6, Dưới 5).</li>
+      <li>Các môn <strong>Đánh giá bằng nhận xét</strong> (Các môn ngoài Tiếng Việt và Toán): Hệ thống tự động tổng hợp trạng thái quy đổi để đồng bộ trên bảng báo cáo:
+        <span class="note-sub-text">Kết quả xếp loại <strong>Đạt (Đ)</strong>: Được tổng hợp hiển thị vào cột <strong>Điểm 9-10</strong>.</span>
+        <span class="note-sub-text">Kết quả xếp loại <strong>Chưa đạt (C)</strong>: Được tổng hợp hiển thị vào cột <strong>Điểm dưới 5</strong>.</span>
+      </li>
+    </ul>
+  </div>
+
+  {% if selected_class %}
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th class="th-group" rowspan="3" style="width:40px">STT</th>
+            <th class="th-group" rowspan="3" style="min-width:100px">Môn học</th>
+            <th class="th-group" colspan="9">Học kì I</th>
+            <th class="th-group" colspan="9">Cả năm</th>
+          </tr>
+          <tr>
+            <th class="th-sub" rowspan="2">Số HS có KQĐG</th>
+            <th class="th-sub" colspan="2">Điểm 9-10</th>
+            <th class="th-sub" colspan="2">Điểm 7-8</th>
+            <th class="th-sub" colspan="2">Điểm 5-6</th>
+            <th class="th-sub" colspan="2">Điểm dưới 5</th>
+            <th class="th-sub" rowspan="2">Số HS có KQĐG</th>
+            <th class="th-sub" colspan="2">Điểm 9-10</th>
+            <th class="th-sub" colspan="2">Điểm 7-8</th>
+            <th class="th-sub" colspan="2">Điểm 5-6</th>
+            <th class="th-sub" colspan="2">Điểm dưới 5</th>
+          </tr>
+          <tr>
+            <th class="th-leaf">SL</th><th class="th-leaf">%</th>
+            <th class="th-leaf">SL</th><th class="th-leaf">%</th>
+            <th class="th-leaf">SL</th><th class="th-leaf">%</th>
+            <th class="th-leaf">SL</th><th class="th-leaf">%</th>
+            <th class="th-leaf">SL</th><th class="th-leaf">%</th>
+            <th class="th-leaf">SL</th><th class="th-leaf">%</th>
+            <th class="th-leaf">SL</th><th class="th-leaf">%</th>
+            <th class="th-leaf">SL</th><th class="th-leaf">%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in subject_rows %}
+          {% set ss = score_map.get(row.subject_id, {}) %}
+          {% set hk1_t = ss.get('hk1_total', 0) or 0 %}
+          {% set cn_t  = ss.get('ca_nam_total', 0) or 0 %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td class="subject-name">{{ row.subject_name }}</td>
+
+            <!-- HK1 -->
+            <td>{{ hk1_t }}</td>
+            <td>{{ ss.get('hk1_9_10', 0) or 0 }}</td>
+            <td class="percent-cell">{{ '%g'|format(ss.get('hk1_9_10',0)*100/hk1_t) if hk1_t else 0 }}%</td>
+            <td>{{ ss.get('hk1_7_8', 0) or 0 }}</td>
+            <td class="percent-cell">{{ '%g'|format(ss.get('hk1_7_8',0)*100/hk1_t) if hk1_t else 0 }}%</td>
+            <td>{{ ss.get('hk1_5_6', 0) or 0 }}</td>
+            <td class="percent-cell">{{ '%g'|format(ss.get('hk1_5_6',0)*100/hk1_t) if hk1_t else 0 }}%</td>
+            <td>{{ ss.get('hk1_under5', 0) or 0 }}</td>
+            <td class="percent-cell">{{ '%g'|format(ss.get('hk1_under5',0)*100/hk1_t) if hk1_t else 0 }}%</td>
+
+            <!-- CẢ NĂM -->
+            <td>{{ cn_t }}</td>
+            <td>{{ ss.get('ca_nam_9_10', 0) or 0 }}</td>
+            <td class="percent-cell">{{ '%g'|format(ss.get('ca_nam_9_10',0)*100/cn_t) if cn_t else 0 }}%</td>
+            <td>{{ ss.get('ca_nam_7_8', 0) or 0 }}</td>
+            <td class="percent-cell">{{ '%g'|format(ss.get('ca_nam_7_8',0)*100/cn_t) if cn_t else 0 }}%</td>
+            <td>{{ ss.get('ca_nam_5_6', 0) or 0 }}</td>
+            <td class="percent-cell">{{ '%g'|format(ss.get('ca_nam_5_6',0)*100/cn_t) if cn_t else 0 }}%</td>
+            <td>{{ ss.get('ca_nam_under5', 0) or 0 }}</td>
+            <td class="percent-cell">{{ '%g'|format(ss.get('ca_nam_under5',0)*100/cn_t) if cn_t else 0 }}%</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="20" style="color:#aaa;padding:24px">Chọn lớp để xem kế hoạch</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+  <div class="table-card" style="padding:40px;text-align:center;color:#aaa;">
+    Vui lòng chọn khối và lớp để xem kế hoạch giáo dục
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
